@@ -46,3 +46,13 @@ class PlatformAccount(Base):
         "User",
         back_populates="accounts"
     )
+
+    recovery_methods = relationship(
+        "RecoveryMethod",
+        back_populates="account"
+    )
+
+    permissions = relationship(
+        "AccountPermission",
+        back_populates="account"
+    )
