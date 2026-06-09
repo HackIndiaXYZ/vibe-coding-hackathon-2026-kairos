@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { useState, type FormEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, type FormEvent, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Shield,
   Mail,
@@ -12,25 +12,18 @@ import {
   AlertCircle,
   Network,
   Fingerprint,
-  Cloud,
-  AtSign,
-  Phone,
   User,
-  Globe,
+  Terminal,
+  Cpu,
+  Binary,
+  Layers,
 } from "lucide-react";
 
-/**
- * Faint, full-screen digital-identity network backdrop.
- * Represents User -> Email -> Social -> Recovery -> Connected Services.
- * Stays at low opacity to sit behind all content.
- */
-function IdentityBackdrop() {
-  type NodeKind = "user" | "email" | "phone" | "social" | "cloud" | "id" | "web";
-  type N = { id: string; x: number; y: number; kind: NodeKind; r?: number; pulse?: boolean };
+type NodeKind = "user" | "email" | "phone" | "social" | "cloud" | "id" | "web";
+type N = { id: string; x: number; y: number; kind: NodeKind; r?: number; pulse?: boolean };
 
-  // Clustered + isolated nodes spread across the whole viewport (% units).
+function IdentityBackdrop() {
   const nodes: N[] = [
-    // Cluster A — primary identity (top-left quadrant)
     { id: "u1", x: 18, y: 30, kind: "user", r: 4, pulse: true },
     { id: "e1", x: 8, y: 18, kind: "email" },
     { id: "e2", x: 28, y: 14, kind: "email" },
@@ -38,29 +31,21 @@ function IdentityBackdrop() {
     { id: "s1", x: 26, y: 44, kind: "social" },
     { id: "s2", x: 14, y: 52, kind: "social" },
     { id: "c1", x: 32, y: 30, kind: "cloud" },
-
-    // Cluster B — work identity (center)
     { id: "u2", x: 52, y: 58, kind: "user", r: 4, pulse: true },
     { id: "e3", x: 44, y: 48, kind: "email" },
     { id: "c2", x: 62, y: 50, kind: "cloud" },
     { id: "c3", x: 60, y: 68, kind: "cloud" },
     { id: "s3", x: 44, y: 70, kind: "social" },
     { id: "id1", x: 54, y: 44, kind: "id" },
-
-    // Cluster C — secondary identity (right)
     { id: "u3", x: 82, y: 28, kind: "user", r: 4, pulse: true },
     { id: "e4", x: 92, y: 20, kind: "email" },
     { id: "p2", x: 94, y: 36, kind: "phone" },
     { id: "s4", x: 76, y: 18, kind: "social" },
     { id: "c4", x: 88, y: 46, kind: "cloud" },
-
-    // Cluster D — bottom-right services
     { id: "c5", x: 78, y: 78, kind: "cloud" },
     { id: "c6", x: 88, y: 86, kind: "cloud" },
     { id: "w1", x: 70, y: 88, kind: "web" },
     { id: "id2", x: 84, y: 70, kind: "id" },
-
-    // Isolated / disconnected identities
     { id: "iso1", x: 5, y: 85, kind: "social" },
     { id: "iso2", x: 38, y: 92, kind: "email" },
     { id: "iso3", x: 96, y: 60, kind: "web" },
@@ -69,19 +54,12 @@ function IdentityBackdrop() {
 
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n])) as Record<string, N>;
 
-  // Edges express: user -> email/phone/social -> recovery/cloud,
-  // plus cross-cluster bridges (linked accounts).
   const edges: Array<[string, string]> = [
-    // Cluster A
     ["u1", "e1"], ["u1", "e2"], ["u1", "p1"], ["u1", "s1"], ["u1", "s2"], ["u1", "c1"],
     ["e1", "s2"], ["e2", "c1"], ["p1", "s1"],
-    // Cluster B
     ["u2", "e3"], ["u2", "c2"], ["u2", "s3"], ["u2", "id1"], ["c2", "c3"], ["e3", "s3"], ["id1", "c2"],
-    // Cluster C
     ["u3", "e4"], ["u3", "p2"], ["u3", "s4"], ["u3", "c4"], ["e4", "c4"],
-    // Cluster D services
     ["c5", "c6"], ["c5", "w1"], ["id2", "c5"], ["id2", "c4"],
-    // Cross-cluster bridges (account linkage discovery)
     ["c1", "e3"], ["s2", "u2"], ["c4", "id1"], ["u2", "id2"],
   ];
 
@@ -96,17 +74,12 @@ function IdentityBackdrop() {
   };
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.18]">
-      <svg
-        className="h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
+    <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.25] mix-blend-screen overflow-hidden">
+      <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="bg-edge" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#00C2FF" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.4" />
+            <stop offset="0%" stopColor="#00C2FF" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.2" />
           </linearGradient>
           <radialGradient id="bg-node-glow">
             <stop offset="0%" stopColor="#67E8F9" stopOpacity="0.9" />
@@ -114,7 +87,6 @@ function IdentityBackdrop() {
           </radialGradient>
         </defs>
 
-        {/* Edges */}
         {edges.map(([a, b], i) => {
           const A = byId[a];
           const B = byId[b];
@@ -130,26 +102,25 @@ function IdentityBackdrop() {
               strokeWidth="0.12"
               strokeLinecap="round"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: [0.25, 0.7, 0.25] }}
+              animate={{ pathLength: 1, opacity: [0.25, 0.75, 0.25] }}
               transition={{
-                pathLength: { duration: 2, delay: (i % 8) * 0.15 },
+                pathLength: { duration: 2, delay: (i % 8) * 0.1 },
                 opacity: { duration: 6 + (i % 4), repeat: Infinity, ease: "easeInOut" },
               }}
             />
           );
         })}
 
-        {/* Traveling packets along edges */}
         {edges.slice(0, 18).map(([a, b], i) => {
           const A = byId[a];
           const B = byId[b];
           if (!A || !B) return null;
-          const dur = 4 + ((i * 1.3) % 5);
+          const dur = 4 + ((i * 1.2) % 4);
           return (
             <motion.circle
               key={`pk-${i}`}
               r="0.35"
-              fill="#A5F3FC"
+              fill="#E0F2FE"
               animate={{
                 cx: [A.x, B.x, A.x],
                 cy: [A.y, B.y, A.y],
@@ -158,480 +129,471 @@ function IdentityBackdrop() {
               transition={{
                 duration: dur,
                 repeat: Infinity,
-                delay: (i % 9) * 0.5,
+                delay: (i % 9) * 0.35,
                 ease: "easeInOut",
               }}
             />
           );
         })}
 
-        {/* Node halos for primary identities */}
         {nodes.filter((n) => n.pulse).map((n) => (
           <motion.circle
             key={`h-${n.id}`}
             cx={n.x}
             cy={n.y}
-            r="2.5"
+            r="2.8"
             fill="url(#bg-node-glow)"
-            initial={{ opacity: 0.5, scale: 0.8 }}
-            animate={{ opacity: [0.2, 0.7, 0.2], scale: [0.8, 1.6, 0.8] }}
+            initial={{ opacity: 0.3, scale: 0.85 }}
+            animate={{ opacity: [0.2, 0.75, 0.2], scale: [0.85, 1.5, 0.85] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           />
         ))}
 
-        {/* Nodes */}
         {nodes.map((n) => (
           <g key={n.id}>
-            <circle
-              cx={n.x}
-              cy={n.y}
-              r={(n.r ?? 2.2) * 0.35}
-              fill={kindColor[n.kind]}
-              opacity="0.95"
-            />
-            <circle
-              cx={n.x}
-              cy={n.y}
-              r={n.r ?? 1.4}
-              fill="none"
-              stroke={kindColor[n.kind]}
-              strokeWidth="0.12"
-              opacity="0.55"
-            />
+            <circle cx={n.x} cy={n.y} r={(n.r ?? 2.2) * 0.32} fill={kindColor[n.kind]} opacity="0.9" />
+            <circle cx={n.x} cy={n.y} r={n.r ?? 1.4} fill="none" stroke={kindColor[n.kind]} strokeWidth="0.1" opacity="0.5" />
           </g>
         ))}
       </svg>
+    </div>
+  );
+}
 
-      {/* Subtle icon overlay near key nodes — communicates node type */}
-      <div className="absolute inset-0">
-        {nodes
-          .filter((n) => ["user", "email", "cloud", "social", "phone"].includes(n.kind))
-          .filter((_, i) => i % 2 === 0)
-          .map((n) => {
-            const Icon =
-              n.kind === "user"
-                ? User
-                : n.kind === "email"
-                  ? AtSign
-                  : n.kind === "cloud"
-                    ? Cloud
-                    : n.kind === "phone"
-                      ? Phone
-                      : Globe;
-            return (
-              <div
-                key={`ic-${n.id}`}
-                className="absolute -translate-x-1/2 -translate-y-1/2 text-cyan-200/70"
-                style={{ left: `${n.x}%`, top: `${n.y}%` }}
-              >
-                <Icon className="h-3 w-3" strokeWidth={1.5} />
-              </div>
-            );
-          })}
+function SecurityConsoleMoat() {
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none hidden lg:block overflow-hidden">
+      {/* Concentric Cyber HUD Rings */}
+      <div className="absolute left-[30%] top-1/2 -translate-y-1/2 w-[650px] h-[650px] rounded-full border border-cyan-500/10 flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+          className="w-[92%] h-[92%] rounded-full border border-dashed border-blue-500/10 flex items-center justify-center"
+        >
+          <div className="w-[85%] h-[85%] rounded-full border border-cyan-400/5" />
+        </motion.div>
+      </div>
+
+      {/* Cybernetic Grid & Perimeter Lights */}
+      <div className="absolute right-12 top-12 font-mono text-[9px] text-cyan-500/40 space-y-1 text-right">
+        <div>CORE_ENV // SECURE_COMM_v1.3</div>
+        <div>SYS_MATRIX_LOAD: NOMINAL</div>
+        <div className="flex items-center gap-1.5 justify-end">
+          <span className="h-1 w-1 rounded-full bg-cyan-400 animate-ping" />
+          <span>NODE_STREAM: STABLE</span>
+        </div>
       </div>
     </div>
   );
 }
 
-
-function NetworkGraph() {
-  const nodes = [
-    { x: 50, y: 20, icon: AtSign, label: "Email", delay: 0 },
-    { x: 80, y: 35, icon: Phone, label: "Phone", delay: 0.2 },
-    { x: 75, y: 70, icon: Cloud, label: "Cloud", delay: 0.4 },
-    { x: 40, y: 80, icon: Globe, label: "Web", delay: 0.6 },
-    { x: 15, y: 55, icon: User, label: "Social", delay: 0.8 },
-    { x: 20, y: 25, icon: Fingerprint, label: "ID", delay: 1.0 },
-  ];
-  const center = { x: 50, y: 50 };
-
+function CyberPillars() {
   return (
-    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00C2FF" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.2" />
-        </linearGradient>
-        <radialGradient id="node-glow">
-          <stop offset="0%" stopColor="#67E8F9" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#00C2FF" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      {nodes.map((n, i) => (
-        <motion.line
-          key={`l-${i}`}
-          x1={center.x}
-          y1={center.y}
-          x2={n.x}
-          y2={n.y}
-          stroke="url(#line-grad)"
-          strokeWidth="0.2"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: [0, 1, 0.5, 1] }}
-          transition={{
-            pathLength: { duration: 1.2, delay: n.delay },
-            opacity: { duration: 3, delay: n.delay + 1.2, repeat: Infinity },
-          }}
-        />
-      ))}
-      {nodes.map((_, i) => (
-        <motion.circle
-          key={`p-${i}`}
-          r="0.5"
-          fill="#67E8F9"
-          initial={{ offsetDistance: "0%" }}
-          animate={{
-            cx: [center.x, nodes[i].x],
-            cy: [center.y, nodes[i].y],
-            opacity: [0, 1, 0],
-          }}
-          transition={{
-            duration: 2.5,
-            delay: nodes[i].delay + 1.5,
-            repeat: Infinity,
-            repeatDelay: 1,
-          }}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function NetworkNodes() {
-  const nodes = [
-    { x: 50, y: 20, icon: AtSign, label: "Email", delay: 0 },
-    { x: 80, y: 35, icon: Phone, label: "Phone", delay: 0.2 },
-    { x: 75, y: 70, icon: Cloud, label: "Cloud", delay: 0.4 },
-    { x: 40, y: 80, icon: Globe, label: "Web", delay: 0.6 },
-    { x: 15, y: 55, icon: User, label: "Social", delay: 0.8 },
-    { x: 20, y: 25, icon: Fingerprint, label: "ID", delay: 1.0 },
-  ];
-  return (
-    <div className="pointer-events-none absolute inset-0">
-      {/* center node */}
-      <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, type: "spring" }}
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-      >
-        <div className="relative">
-          <div className="absolute inset-0 animate-ping rounded-full bg-cyan-400/30" />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-cyan-300/40 bg-gradient-to-br from-cyan-400/30 to-blue-600/30 backdrop-blur-md shadow-[0_0_40px_rgba(0,194,255,0.6)]">
-            <Shield className="h-7 w-7 text-cyan-200" />
-          </div>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full pt-6 border-t border-white/5">
+      <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 backdrop-blur-sm relative group hover:border-cyan-500/20 transition-all duration-300">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <Cpu className="h-4 w-4 text-cyan-400" />
+          <h3 className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-200">OSINT Recon</h3>
         </div>
-      </motion.div>
-      {nodes.map((n, i) => {
-        const Icon = n.icon;
-        return (
-          <motion.div
-            key={i}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, y: [0, -8, 0] }}
-            transition={{
-              scale: { duration: 0.5, delay: n.delay + 0.5 },
-              opacity: { duration: 0.5, delay: n.delay + 0.5 },
-              y: { duration: 4 + i, delay: n.delay + 1, repeat: Infinity, ease: "easeInOut" },
-            }}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${n.x}%`, top: `${n.y}%` }}
-          >
-            <div className="group flex flex-col items-center gap-2">
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/30 bg-slate-900/70 backdrop-blur-sm shadow-[0_0_20px_rgba(0,194,255,0.25)]">
-                <Icon className="h-5 w-5 text-cyan-300" />
-              </div>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-cyan-200/70">
-                {n.label}
-              </span>
-            </div>
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-}
+        <p className="text-[11px] text-slate-400 leading-relaxed">Continuous automated asset lineage discovery across surface layers.</p>
+      </div>
 
-function Particles() {
-  const particles = Array.from({ length: 25 });
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {particles.map((_, i) => {
-        const size = Math.random() * 3 + 1;
-        const left = Math.random() * 100;
-        const duration = Math.random() * 15 + 10;
-        const delay = Math.random() * 10;
-        return (
-          <span
-            key={i}
-            className="absolute rounded-full bg-cyan-300/60"
-            style={{
-              width: `${size}px`,
-              height: `${size}px`,
-              left: `${left}%`,
-              bottom: `-10px`,
-              boxShadow: "0 0 8px rgba(103, 232, 249, 0.8)",
-              animation: `float-up ${duration}s linear ${delay}s infinite`,
-            }}
-          />
-        );
-      })}
+      <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 backdrop-blur-sm relative group hover:border-cyan-500/20 transition-all duration-300">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <Binary className="h-4 w-4 text-sky-400" />
+          <h3 className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-200">Threat Graph</h3>
+        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">Structural dependency cross-referencing to isolate vulnerability leaks.</p>
+      </div>
+
+      <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 backdrop-blur-sm relative group hover:border-cyan-500/20 transition-all duration-300">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <Layers className="h-4 w-4 text-blue-400" />
+          <h3 className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-200">Zero-Logs</h3>
+        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">Cryptographically validated perimeters engineered without tracking maps.</p>
+      </div>
     </div>
   );
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [isRegister, setIsRegister] = useState(false);
+  
+  // Shared fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // Registration specific fields
+  const [fullName, setFullName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 120, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 120, damping: 20 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["6deg", "-6deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-6deg", "6deg"]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left - width / 2;
+    const mouseY = e.clientY - rect.top - height / 2;
+    x.set(mouseX / width);
+    y.set(mouseY / height);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
   const onSubmit = async (e: FormEvent) => {
-  e.preventDefault();
-  setError(null);
+    e.preventDefault();
+    setError(null);
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setError("Please enter a valid email address.");
-    return;
-  }
+    if (isRegister && !fullName.trim()) {
+      setError("Please supply your full legal name parameters.");
+      return;
+    }
 
-  if (password.length < 6) {
-    setError("Password must be at least 6 characters.");
-    return;
-  }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please supply a valid intelligence identity endpoint.");
+      return;
+    }
 
-  setLoading(true);
+    if (password.length < 6) {
+      setError("Passphrase frame token mismatch. Access parameters rejected.");
+      return;
+    }
 
-  await new Promise((r) => setTimeout(r, 1400));
+    if (isRegister && password !== confirmPassword) {
+      setError("Passphrase validation failed. Keys do not intersect.");
+      return;
+    }
 
-  setLoading(false);
-  setSuccess(true);
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1400));
+    setLoading(false);
+    setSuccess(true);
 
-  setTimeout(() => {
-    navigate("/dashboard");
-  }, 1000);
-};
-  
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 1000);
+  };
+
+  const toggleAuthMode = () => {
+    setIsRegister(!isRegister);
+    setError(null);
+    setSuccess(false);
+    setPassword("");
+    setConfirmPassword("");
+  };
+
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#050816] text-slate-100">
-      {/* Background layers */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,194,255,0.18),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(59,130,246,0.15),transparent_50%)]" />
-      <div className="absolute inset-0 cyber-grid opacity-40" />
+    <div className="relative h-screen w-full overflow-hidden bg-[#03050d] text-slate-100 flex items-center justify-center selection:bg-cyan-500/30 selection:text-cyan-200">
+      {/* Cinematic Layering Mesh */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,194,255,0.2),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(59,130,246,0.15),transparent_60%)] animate-pulse [animation-duration:12s]" />
+      <div className="absolute inset-0 opacity-[0.4]" style={{ backgroundImage: "linear-gradient(to right, rgba(0, 194, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 194, 255, 0.03) 1px, transparent 1px)", backgroundSize: "50px 50px" }} />
       <IdentityBackdrop />
-      <Particles />
-      {/* Scanline */}
+      <SecurityConsoleMoat />
+
+      {/* Volumetric Beam Sweeper */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
+        className="pointer-events-none absolute inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-500/60 to-transparent shadow-[0_0_20px_rgba(34,211,238,0.7)]"
         animate={{ top: ["0%", "100%"] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
       />
 
-      <div className="relative z-10 grid min-h-screen grid-cols-1 lg:grid-cols-2">
-        {/* LEFT — Network visualization */}
-        <div className="relative hidden flex-col justify-between p-10 lg:flex xl:p-14">
+      {/* Main Container Layer */}
+      <div className="relative z-10 w-full h-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 items-center px-6 lg:px-16 gap-12">
+        
+        {/* LEFT COLUMN: Deep Visual Storytelling Panel */}
+        <div className="relative hidden h-full flex-col justify-between py-12 lg:col-span-6 lg:flex pr-6">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, type: "spring" }}
             className="flex items-center gap-3"
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_20px_rgba(0,194,255,0.5)]">
-              <Shield className="h-5 w-5 text-slate-950" />
-              <Network className="absolute -bottom-1 -right-1 h-3.5 w-3.5 text-cyan-200" />
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_30px_rgba(0,194,255,0.5)] border border-cyan-300/20">
+              <Shield className="h-5.5 w-5.5 text-slate-950" strokeWidth={2.5} />
+              <Network className="absolute -bottom-1 -right-1 h-4 w-4 text-cyan-100 bg-slate-950 rounded-full p-0.5" />
             </div>
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/80">
-              DFM • Identity Intel
-            </span>
+            <div className="flex flex-col">
+              <span className="font-mono text-xs font-black uppercase tracking-[0.25em] bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                Linksys • IDENTITY INTEL
+              </span>
+              <span className="text-[9px] text-slate-500 font-mono tracking-wider uppercase">Enterprise Security Gateway</span>
+            </div>
           </motion.div>
-
-          <div className="relative my-8 flex-1">
-            <NetworkGraph />
-            <NetworkNodes />
-          </div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="max-w-lg"
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="space-y-6"
           >
-            <h1 className="text-5xl font-bold leading-tight tracking-tight xl:text-6xl">
-              <span className="bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent">
-                Map. Analyze.
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent glow-text">
-                Protect.
-              </span>
-            </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-slate-400">
-              Discover your digital footprint, connected identities, account
-              dependencies, and hidden security risks across the open web.
-            </p>
-            <div className="mt-6 flex items-center gap-6 text-xs uppercase tracking-wider text-slate-500">
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                Live OSINT
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(0,194,255,0.8)]" />
-                Zero-Knowledge
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                SOC 2
-              </span>
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-cyan-500/5 border border-cyan-500/10 text-cyan-400 font-mono text-[9px] uppercase tracking-wider">
+                <Terminal className="h-3 w-3" /> Reconnaissance Interface Active
+              </div>
+              <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight xl:text-5xl text-white">
+                Map. Analyze.{" "}
+                <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(34,211,238,0.55)] font-black">
+                  Protect Footprints.
+                </span>
+              </h1>
+              <p className="max-w-md text-xs leading-relaxed text-slate-400 font-normal">
+                Isolate leaked network nodes, reconstruct complex credential lineage graphs, and discover systemic security anomalies across the surface perimeter.
+              </p>
             </div>
+
+            {/* Premium Informational Pillars */}
+            <CyberPillars />
           </motion.div>
+
+          {/* Secure Compliance Anchor */}
+          <div className="flex items-center gap-6 font-mono text-[9px] font-bold uppercase tracking-widest text-slate-500 border-t border-white/5 pt-4">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+              SOC 2 CERTIFIED
+            </span>
+            <span className="text-slate-600">|</span>
+            <span>Linksys DEPLOYMENT NODE</span>
+          </div>
         </div>
 
-        {/* RIGHT — Login card */}
-        <div className="flex items-center justify-center p-6 sm:p-10">
+        {/* RIGHT COLUMN: Cinematic Integrated Login / Register Form */}
+        <div className="flex items-center justify-center lg:col-span-6 w-full h-full py-6">
           <motion.div
+            ref={cardRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="w-full max-w-md"
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="w-full max-w-[480px]"
           >
-            <div className="glass-card relative rounded-2xl p-8 sm:p-10">
-              {/* Gradient border glow */}
-              <div className="pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-br from-cyan-400/30 via-transparent to-blue-500/20 opacity-60 blur-sm" />
+            {/* Integrated, Larger Embedded Experience Shield */}
+            <div 
+              style={{ transform: "translateZ(40px)" }}
+              className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#090f24]/90 to-[#030612]/95 p-8 sm:p-11 shadow-[0_40px_100px_-15px_rgba(0,0,0,0.9)] backdrop-blur-3xl"
+            >
+              {/* Complex Reactive Light Rings Inside Form Card */}
+              <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-cyan-500/10 blur-[60px]" />
+              <div className="pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-blue-600/10 blur-[60px]" />
+              <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-cyan-400/40 via-transparent to-blue-500/20 opacity-100" />
 
-              <div className="relative">
-                <div className="mb-8 flex flex-col items-center text-center">
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.7, type: "spring" }}
-                    className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_30px_rgba(0,194,255,0.6)]"
-                  >
-                    <Shield className="h-7 w-7 text-slate-950" strokeWidth={2.5} />
-                    <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#0B1120] bg-cyan-300">
-                      <Network className="h-2.5 w-2.5 text-slate-950" strokeWidth={3} />
-                    </div>
-                  </motion.div>
-                  <h2 className="text-2xl font-bold tracking-tight text-white">
-                    Digital Footprint Mapper
+              <div className="relative space-y-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_35px_rgba(0,194,255,0.4)] border border-cyan-300/20">
+                    <Shield className="h-6.5 w-6.5 text-slate-950" strokeWidth={2.5} />
+                  </div>
+                  <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+                    {isRegister ? "Register Architecture" : "Reconstruct Identity"}
                   </h2>
-                  <p className="mt-1.5 text-sm text-slate-400">
-                    Monitor, Analyze and Secure Your Online Presence
+                  <p className="mt-1.5 text-xs text-slate-400 max-w-xs">
+                    {isRegister 
+                      ? "Create an identity profile layer to map open network footprint assets." 
+                      : "Pass systemic authentication layers to map real-time exposure matrices inside Linksys."
+                    }
                   </p>
                 </div>
 
-                <form onSubmit={onSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-slate-300">
-                      Email
-                    </label>
-                    <div className="group relative">
-                      <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
-                      <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="analyst@company.com"
-                        autoComplete="email"
-                        className="w-full rounded-lg border border-white/10 bg-slate-950/50 py-3 pl-10 pr-3 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:border-cyan-400/60 focus:bg-slate-950/80 focus:shadow-[0_0_0_3px_rgba(0,194,255,0.15)]"
-                      />
+                <form onSubmit={onSubmit} className="space-y-4.5">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={isRegister ? "register-fields" : "login-fields"}
+                      initial={{ opacity: 0, x: isRegister ? 15 : -15 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: isRegister ? -15 : 15 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="space-y-4.5"
+                    >
+                      {/* Name Parameter (Only on Register) */}
+                      {isRegister && (
+                        <div className="space-y-2">
+                          <label htmlFor="fullName" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
+                            <User className="h-3 w-3" /> Full Name Parameter
+                          </label>
+                          <div className="group relative">
+                            <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
+                            <input
+                              id="fullName"
+                              type="text"
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              placeholder="Alex Nakamura"
+                              className="w-full rounded-xl border border-white/10 bg-slate-950/60 py-3.5 pl-11 pr-4 text-xs font-mono text-white placeholder:text-slate-700 outline-none transition-all duration-300 focus:border-cyan-400/60 focus:bg-slate-950/90 focus:shadow-[0_0_20px_rgba(0,194,255,0.15)]"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Identity Endpoint Field */}
+                      <div className="space-y-2">
+                        <label htmlFor="email" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
+                          <Terminal className="h-3 w-3" /> Identity Endpoint Token
+                        </label>
+                        <div className="group relative">
+                          <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
+                          <input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="analyst@company.com"
+                            autoComplete="email"
+                            className="w-full rounded-xl border border-white/10 bg-slate-950/60 py-3.5 pl-11 pr-4 text-xs font-mono text-white placeholder:text-slate-700 outline-none transition-all duration-300 focus:border-cyan-400/60 focus:bg-slate-950/90 focus:shadow-[0_0_20px_rgba(0,194,255,0.15)]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* System Passphrase Field */}
+                      <div className="space-y-2">
+                        <label htmlFor="password" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
+                          <Lock className="h-3 w-3" /> System Passphrase Key
+                        </label>
+                        <div className="group relative">
+                          <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
+                          <input
+                            id="password"
+                            type={showPwd ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••••••"
+                            autoComplete={isRegister ? "new-password" : "current-password"}
+                            className="w-full rounded-xl border border-white/10 bg-slate-950/60 py-3.5 pl-11 pr-12 text-xs font-mono text-white placeholder:text-slate-700 outline-none transition-all duration-300 focus:border-cyan-400/60 focus:bg-slate-950/90 focus:shadow-[0_0_20px_rgba(0,194,255,0.15)]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPwd((v) => !v)}
+                            aria-label={showPwd ? "Hide password" : "Show password"}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 transition-colors hover:text-cyan-400"
+                          >
+                            {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Confirm Passphrase Field (Only on Register) */}
+                      {isRegister && (
+                        <div className="space-y-2">
+                          <label htmlFor="confirmPassword" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
+                            <Lock className="h-3 w-3" /> Intersect Passphrase Key
+                          </label>
+                          <div className="group relative">
+                            <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
+                            <input
+                              id="confirmPassword"
+                              type={showPwd ? "text" : "password"}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="••••••••••••"
+                              autoComplete="new-password"
+                              className="w-full rounded-xl border border-white/10 bg-slate-950/60 py-3.5 pl-11 pr-12 text-xs font-mono text-white placeholder:text-slate-700 outline-none transition-all duration-300 focus:border-cyan-400/60 focus:bg-slate-950/90 focus:shadow-[0_0_20px_rgba(0,194,255,0.15)]"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Options Matrix Row (Only on Login) */}
+                  {!isRegister && (
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <label className="flex cursor-pointer items-center gap-2 text-slate-400 select-none hover:text-slate-200 transition-colors">
+                        <span className="relative flex h-4 w-4 items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={remember}
+                            onChange={(e) => setRemember(e.target.checked)}
+                            className="peer absolute h-4 w-4 cursor-pointer appearance-none rounded-md border border-white/20 bg-slate-950/60 checked:border-cyan-400 checked:bg-cyan-400/20 transition-all"
+                          />
+                          <CheckCircle2 className="pointer-events-none h-3 w-3 text-cyan-400 opacity-0 peer-checked:opacity-100 transition-opacity" strokeWidth={2.5} />
+                        </span>
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400">Remember Environment Node</span>
+                      </label>
+                      <a href="#" className="font-mono text-[9px] uppercase tracking-wider text-cyan-400 font-bold transition-colors hover:text-cyan-300">
+                        Recovery System
+                      </a>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-slate-300">
-                      Password
-                    </label>
-                    <div className="group relative">
-                      <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
-                      <input
-                        id="password"
-                        type={showPwd ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        autoComplete="current-password"
-                        className="w-full rounded-lg border border-white/10 bg-slate-950/50 py-3 pl-10 pr-11 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:border-cyan-400/60 focus:bg-slate-950/80 focus:shadow-[0_0_0_3px_rgba(0,194,255,0.15)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPwd((v) => !v)}
-                        aria-label={showPwd ? "Hide password" : "Show password"}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-500 transition-colors hover:text-cyan-300"
-                      >
-                        {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex cursor-pointer items-center gap-2 text-slate-400 hover:text-slate-200">
-                      <span className="relative flex h-4 w-4 items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={remember}
-                          onChange={(e) => setRemember(e.target.checked)}
-                          className="peer absolute h-4 w-4 cursor-pointer appearance-none rounded border border-white/20 bg-slate-950/60 checked:border-cyan-400 checked:bg-cyan-400/20"
-                        />
-                        <CheckCircle2 className="pointer-events-none h-3 w-3 text-cyan-300 opacity-0 peer-checked:opacity-100" strokeWidth={3} />
-                      </span>
-                      Remember me
-                    </label>
-                    <a href="#" className="font-medium text-cyan-400 transition-colors hover:text-cyan-300">
-                      Forgot password?
-                    </a>
-                  </div>
-
-                  <AnimatePresence>
+                  {/* Diagnostics Error Intercept */}
+                  <AnimatePresence mode="wait">
                     {error && (
                       <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-300"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-300"
                       >
-                        <AlertCircle className="h-4 w-4 shrink-0" />
-                        {error}
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                        <span className="font-mono text-[10px]">{error}</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
+                  {/* Submission Vector Processing Button */}
                   <motion.button
                     type="submit"
                     disabled={loading || success}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-lg bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_30px_rgba(0,194,255,0.35)] transition-all hover:shadow-[0_0_40px_rgba(0,194,255,0.6)] disabled:opacity-80"
+                    className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-4 py-4 text-xs font-black uppercase tracking-widest text-slate-950 shadow-[0_0_30px_rgba(0,194,255,0.4)] transition-all duration-300 hover:shadow-[0_0_40px_rgba(0,194,255,0.6)] disabled:opacity-50"
                   >
                     <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
                     {success ? (
                       <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Authenticated
+                        <CheckCircle2 className="h-4 w-4 animate-bounce" strokeWidth={2.5} />
+                        {isRegister ? "COMPILING INDEX..." : "ACCESS GRANTED"}
                       </>
                     ) : loading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Authenticating…
+                        {isRegister ? "GENERATING LAYER..." : "COMPILING VECTOR..."}
                       </>
                     ) : (
-                      <>Sign In Securely</>
+                      <>{isRegister ? "Deploy Identity Node" : "Initialize Linksys Decryption"}</>
                     )}
                   </motion.button>
                 </form>
 
-                <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
-                  Discover hidden digital identities, connected accounts, and
-                  security risks across your online footprint.
-                </p>
+                {/* Subtext Form Navigation Toggle */}
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={toggleAuthMode}
+                    className="font-mono text-[10px] uppercase tracking-wider text-slate-400 hover:text-cyan-400 transition-colors duration-200 cursor-pointer"
+                  >
+                    {isRegister ? (
+                      <>Already have an account? <span className="text-cyan-400 font-bold underline decoration-cyan-500/40">Login here</span></>
+                    ) : (
+                      <>Don't have an account? <span className="text-cyan-400 font-bold underline decoration-cyan-500/40">Register here</span></>
+                    )}
+                  </button>
+                </div>
 
-                <div className="mt-6 flex items-center justify-center gap-2 border-t border-white/5 pt-5 text-[11px] uppercase tracking-wider text-slate-600">
-                  <Lock className="h-3 w-3" />
-                  End-to-end encrypted • TLS 1.3
+                <div className="flex items-center justify-center gap-2 border-t border-white/5 pt-4 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+                  <Fingerprint className="h-4 w-4 text-slate-600" />
+                  E2E Encrypted Protocol • TLS 1.3
                 </div>
               </div>
             </div>

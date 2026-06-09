@@ -7,11 +7,14 @@ import Identities from "./pages/Identities";
 import Accounts from "./pages/Accounts";
 import Profile from "./pages/Profile";
 import Graph from "./pages/Graph";
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Both endpoints now cleanly map to the Login component */}
         <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
 
         <Route
           path="/dashboard"

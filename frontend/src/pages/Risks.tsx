@@ -1,27 +1,22 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "../components/Sidebar";
 import {
-  Shield,
   ShieldAlert,
-  ShieldCheck,
-  AlertTriangle,
   Activity,
   Lock,
   KeyRound,
   Users,
   GitBranch,
   Globe,
+  Search,
   MessageSquare,
   Boxes,
   Link2,
-  CheckCircle2,
-  Clock,
-  TrendingUp,
   Eye,
-  Zap,
-  Filter,
   ArrowUpRight,
+  Bell,
+  Terminal,
 } from "lucide-react";
 import {
   PieChart,
@@ -122,88 +117,158 @@ const ACTIONS = [
   { icon: Users, title: "Limit account recovery methods", detail: "Reduce Discord recovery channels from 4 → 2.", priority: "Medium" },
 ];
 
-const severityColor: Record<Severity, { text: string; bg: string; ring: string; dot: string; chart: string }> = {
+const severityColor: Record<Severity, { text: string; bg: string; ring: string; dot: string; border: string; chart: string }> = {
   High: {
-    text: "text-rose-300",
+    text: "text-rose-400",
     bg: "bg-rose-500/10",
-    ring: "ring-rose-400/30",
-    dot: "bg-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.8)]",
+    ring: "ring-rose-500/20",
+    dot: "bg-rose-400 shadow-[0_0_8px_#f43f5e]",
+    border: "border-rose-500/20",
     chart: "#fb7185",
   },
   Medium: {
-    text: "text-amber-300",
+    text: "text-amber-400",
     bg: "bg-amber-500/10",
-    ring: "ring-amber-400/30",
-    dot: "bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]",
+    ring: "ring-amber-500/20",
+    dot: "bg-amber-400 shadow-[0_0_8px_#f59e0b]",
+    border: "border-amber-500/20",
     chart: "#fbbf24",
   },
   Low: {
-    text: "text-sky-300",
+    text: "text-sky-400",
     bg: "bg-sky-500/10",
-    ring: "ring-sky-400/30",
-    dot: "bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.8)]",
+    ring: "ring-sky-500/20",
+    dot: "bg-sky-400 shadow-[0_0_8px_#38bdf8]",
+    border: "border-sky-500/20",
     chart: "#38bdf8",
   },
 };
 
 const statusStyle = {
-  Open: "bg-rose-500/10 text-rose-300 ring-rose-400/30",
-  "In Review": "bg-amber-500/10 text-amber-300 ring-amber-400/30",
-  Mitigated: "bg-emerald-500/10 text-emerald-300 ring-emerald-400/30",
+  Open: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "In Review": "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  Mitigated: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
 } as const;
 
 const toneStyle: Record<string, string> = {
-  cyan: "bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)]",
-  red: "bg-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.9)]",
-  amber: "bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.9)]",
-  sky: "bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.9)]",
+  cyan: "bg-cyan-500 shadow-[0_0_6px_#22d3ee]",
+  red: "bg-rose-400 shadow-[0_0_6px_#f43f5e]",
+  amber: "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
+  sky: "bg-sky-400 shadow-[0_0_6px_#38bdf8]",
 };
 
-function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+/* ---------- Faint atmospheric constellation backdrop (Dashboard Aligned) ---------- */
+function AmbientIdentityBackdrop() {
+  type N_Backdrop = { id: string; x: number; y: number; kind: string; r?: number; pulse?: boolean };
+  const nodes: N_Backdrop[] = [
+    { id: "da1", x: 8, y: 15, kind: "email" },
+    { id: "da2", x: 25, y: 12, kind: "user", r: 3, pulse: true },
+    { id: "da3", x: 12, y: 38, kind: "phone" },
+    { id: "da4", x: 32, y: 42, kind: "social" },
+    { id: "da5", x: 55, y: 22, kind: "cloud" },
+    { id: "da6", x: 78, y: 14, kind: "email" },
+    { id: "da7", x: 88, y: 35, kind: "user", r: 3, pulse: true },
+    { id: "da8", x: 92, y: 65, kind: "social" },
+    { id: "da9", x: 74, y: 82, kind: "web" },
+    { id: "da10", x: 48, y: 88, kind: "id" },
+  ];
+
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n])) as Record<string, N_Backdrop>;
+
+  const edges: Array<[string, string]> = [
+    ["da1", "da2"], ["da2", "da3"], ["da2", "da4"],
+    ["da4", "da5"], ["da5", "da6"], ["da6", "da7"],
+    ["da7", "da8"], ["da8", "da9"], ["da9", "da10"],
+    ["da10", "da3"], ["da4", "da7"],
+  ];
+
+  const kindColor: Record<string, string> = {
+    user: "#67E8F9",
+    email: "#00C2FF",
+    phone: "#38BDF8",
+    social: "#60A5FA",
+    cloud: "#22D3EE",
+    id: "#A5F3FC",
+    web: "#3B82F6",
+  };
+
   return (
-    <div
-      className={`relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_30px_80px_-30px_rgba(8,145,178,0.35)] ${className}`}
-    >
-      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/[0.06] via-transparent to-blue-500/[0.04]" />
-      <div className="relative">{children}</div>
+    <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.11] mix-blend-screen overflow-hidden">
+      <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id="dash-edge" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#00C2FF" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.15" />
+          </linearGradient>
+          <radialGradient id="dash-node-glow">
+            <stop offset="0%" stopColor="#67E8F9" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#00C2FF" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {edges.map(([a, b], i) => {
+          const A = byId[a];
+          const B = byId[b];
+          if (!A || !B) return null;
+          return (
+            <motion.line
+              key={`de-${i}`}
+              x1={A.x}
+              y1={A.y}
+              x2={B.x}
+              y2={B.y}
+              stroke="url(#dash-edge)"
+              strokeWidth="0.1"
+              strokeLinecap="round"
+              initial={{ opacity: 0.3 }}
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{
+                duration: 5 + (i % 4),
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          );
+        })}
+
+        {nodes.filter((n) => n.pulse).map((n) => (
+          <motion.circle
+            key={`dh-${n.id}`}
+            cx={n.x}
+            cy={n.y}
+            r="2.2"
+            fill="url(#dash-node-glow)"
+            animate={{ scale: [0.95, 1.25, 0.95], opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ))}
+
+        {nodes.map((n) => (
+          <g key={n.id}>
+            <circle cx={n.x} cy={n.y} r="0.3" fill={kindColor[n.kind]} opacity="0.9" />
+            <circle cx={n.x} cy={n.y} r="0.9" fill="none" stroke={kindColor[n.kind]} strokeWidth="0.06" opacity="0.4" />
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-  delay,
-}: {
-  label: string;
-  value: string | number;
-  icon: typeof Shield;
-  accent: string;
-  delay: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-      whileHover={{ y: -3 }}
-    >
-      <GlassCard className="p-5 group hover:border-cyan-400/30 transition-colors">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{label}</p>
-            <p className="mt-3 text-3xl font-semibold text-white tabular-nums">{value}</p>
-          </div>
-          <div className={`grid h-10 w-10 place-items-center rounded-xl ring-1 ${accent}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-        <div className="mt-4 h-px w-full bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      </GlassCard>
-    </motion.div>
-  );
+/* ---------- Counter Atomic Component ---------- */
+function Counter({ value, duration = 1.2 }: { value: number; duration?: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / (duration * 1000));
+      setN(Math.round(value * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <>{n}</>;
 }
 
 export default function Risks() {
@@ -224,494 +289,281 @@ export default function Risks() {
   const scoreData = [{ name: "score", value: riskScore, fill: "url(#scoreGradient)" }];
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-[#05070d] text-slate-200">
-      <Sidebar currentPath="/risks" />
-      <div className="relative flex-1">
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-cyan-500/20 blur-[160px]" />
-        <div className="absolute top-40 -right-32 h-[420px] w-[420px] rounded-full bg-blue-600/20 blur-[160px]" />
-        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-indigo-600/10 blur-[140px]" />
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, rgba(56,189,248,0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(56,189,248,0.4) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-            maskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
-          }}
-        />
-      </div>
+    <div className="min-h-screen w-full text-slate-200 antialiased font-sans bg-[#040508] relative selection:bg-cyan-500/20">
+      {/* Immersive background layouts to maintain product consistency matrix */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.14),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(99,102,241,0.09),transparent_55%)] pointer-events-none" />
+      <div className="absolute inset-0 z-0 opacity-[0.22] bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      <AmbientIdentityBackdrop />
 
-      <div className="relative mx-auto max-w-7xl px-6 py-10">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-wrap items-center justify-between gap-4"
-        >
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-cyan-300/80">
-              <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
-              LIVE — LINKSYS
+      <div className="flex relative z-10">
+        <Sidebar currentPath="/risks" />
+        
+        <main className="flex-1 min-w-0">
+          
+          {/* Top Header Navigation */}
+          <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-white/[0.02] bg-[#040508]/40 px-8 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_8px_#22d3ee]" />
+              <span className="text-xs font-semibold text-slate-400 font-mono tracking-wider uppercase">Linksys Command Center</span>
             </div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Risk Center
-            </h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Identity threats, risky permissions, and suspicious accounts detected across LinkSys.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="group inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 backdrop-blur transition hover:border-cyan-400/40 hover:bg-cyan-400/5 hover:text-white">
-              <Activity className="h-4 w-4 text-cyan-300" /> Re-run scan
-            </button>
-            <button className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-2 text-sm font-medium text-slate-950 shadow-[0_8px_30px_-8px_rgba(34,211,238,0.7)] transition hover:shadow-[0_10px_40px_-8px_rgba(34,211,238,0.9)]">
-              <Shield className="h-4 w-4" /> Mitigate all
-              <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Summary */}
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
-          <StatCard
-            label="Total Findings"
-            value={5}
-            icon={ShieldAlert}
-            accent="bg-cyan-500/10 text-cyan-300 ring-cyan-400/30"
-            delay={0.05}
-          />
-          <StatCard
-            label="High Risk"
-            value={2}
-            icon={AlertTriangle}
-            accent="bg-rose-500/10 text-rose-300 ring-rose-400/30"
-            delay={0.1}
-          />
-          <StatCard
-            label="Medium Risk"
-            value={2}
-            icon={Zap}
-            accent="bg-amber-500/10 text-amber-300 ring-amber-400/30"
-            delay={0.15}
-          />
-          <StatCard
-            label="Low Risk"
-            value={1}
-            icon={ShieldCheck}
-            accent="bg-sky-500/10 text-sky-300 ring-sky-400/30"
-            delay={0.2}
-          />
-          <StatCard
-            label="Risk Score"
-            value="72/100"
-            icon={TrendingUp}
-            accent="bg-blue-500/10 text-blue-300 ring-blue-400/30"
-            delay={0.25}
-          />
-        </div>
-
-        {/* Charts row */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-2"
-          >
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-white">Risk Distribution</h3>
-                  <p className="text-xs text-slate-400">Breakdown by severity tier</p>
+            
+            <div className="flex items-center gap-6">
+              <div className="relative group hidden sm:block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
+                <input
+                  placeholder="Query threat anomalies..."
+                  className="w-56 rounded-xl border border-white/[0.04] bg-slate-950/20 py-1.5 pl-9 pr-4 text-xs text-slate-300 placeholder:text-slate-600 outline-none transition-all focus:border-slate-800"
+                />
+              </div>
+              
+              <button className="relative text-slate-500 hover:text-slate-300 transition-colors">
+                <Bell className="h-4 w-4" />
+                <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-cyan-400" />
+              </button>
+              
+              <div className="h-7 border-l border-white/5" />
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-slate-900 border border-white/10 text-[10px] font-bold text-cyan-400">
+                  AN
                 </div>
-                <span className="rounded-lg bg-white/5 px-2.5 py-1 text-xs text-slate-300 ring-1 ring-white/10">
-                  Last 24h
-                </span>
+                <span className="text-xs font-medium text-slate-400 hidden md:block">Alex Nakamura</span>
+              </div>
+            </div>
+          </header>
+
+          {/* Core Structured Content Padding Container */}
+          <div className="max-w-[1120px] mx-auto px-8 py-10 space-y-10">
+            
+            {/* 1. HERO THREAT STABILIZATION STATE SUMMARY */}
+            <motion.header
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-8 border-b border-white/[0.03]"
+            >
+              <div className="space-y-3.5 max-w-2xl">
+                <div className="inline-flex items-center gap-2 text-[10px] font-bold tracking-widest font-mono text-rose-400 uppercase">
+                  <ShieldAlert className="h-4 w-4" /> Threat Matrix Center
+                </div>
+                <h1 className="text-3xl font-light tracking-tight text-white leading-tight">
+                  Risk Assessment & Threat Index
+                </h1>
+                <p className="text-sm text-slate-400 leading-relaxed font-normal">
+                  Linksys is actively evaluating vulnerabilities across discovered endpoints. Review security gaps, revoke high-privilege permissions, and mitigate over-scoped OAuth frameworks inside connected integrations below.
+                </p>
               </div>
 
-              <div className="mt-4 grid items-center gap-4 sm:grid-cols-2">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <defs>
-                        {distribution.map((d) => (
-                          <linearGradient id={`g-${d.name}`} key={d.name} x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor={d.color} stopOpacity={1} />
-                            <stop offset="100%" stopColor={d.color} stopOpacity={0.4} />
-                          </linearGradient>
-                        ))}
-                      </defs>
-                      <Pie
-                        data={distribution}
-                        innerRadius={62}
-                        outerRadius={96}
-                        paddingAngle={4}
-                        dataKey="value"
-                        stroke="rgba(2,6,23,0.6)"
-                        strokeWidth={2}
-                      >
-                        {distribution.map((d) => (
-                          <Cell key={d.name} fill={`url(#g-${d.name})`} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          background: "rgba(2,6,23,0.9)",
-                          border: "1px solid rgba(34,211,238,0.3)",
-                          borderRadius: 12,
-                          color: "#e2e8f0",
-                          fontSize: 12,
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-3">
-                  {distribution.map((d) => (
-                    <div
-                      key={d.name}
-                      className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ background: d.color, boxShadow: `0 0 12px ${d.color}` }}
-                        />
-                        <span className="text-sm text-slate-200">{d.name} severity</span>
-                      </div>
-                      <span className="text-sm font-semibold text-white tabular-nums">{d.value}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <button className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 px-4 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:text-white transition-all">
+                  <Activity className="h-3.5 w-3.5" /> Re-run Scan
+                </button>
+                <button className="inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-all hover:bg-cyan-500 hover:text-slate-950 shadow-md">
+                  Mitigate All Risks <ArrowUpRight className="h-3.5 w-3.5" />
+                </button>
               </div>
-            </GlassCard>
-          </motion.div>
+            </motion.header>
 
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-          >
-            <GlassCard className="p-6">
-              <h3 className="text-base font-semibold text-white">Overall Risk Score</h3>
-              <p className="text-xs text-slate-400">Composite identity exposure</p>
-              <div className="relative mt-2 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart
-                    innerRadius="72%"
-                    outerRadius="100%"
-                    data={scoreData}
-                    startAngle={220}
-                    endAngle={-40}
-                  >
-                    <defs>
-                      <linearGradient id="scoreGradient" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#22d3ee" />
-                        <stop offset="100%" stopColor="#3b82f6" />
-                      </linearGradient>
-                    </defs>
-                    <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                    <RadialBar background={{ fill: "rgba(255,255,255,0.05)" }} dataKey="value" cornerRadius={20} />
-                  </RadialBarChart>
-                </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Score</span>
-                  <span className="mt-1 bg-gradient-to-br from-cyan-300 to-blue-400 bg-clip-text text-5xl font-bold text-transparent tabular-nums">
-                    {riskScore}
-                  </span>
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-amber-400/30">
-                    Elevated
-                  </span>
-                </div>
+            {/* 2. SIMPLIFIED HIGH LEVEL SUMMARY INDEXING METRICS */}
+            <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 shadow-sm relative overflow-hidden">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">Total Findings</span>
+                <span className="text-2xl font-black font-mono text-white mt-1 block"><Counter value={5} /></span>
               </div>
-            </GlassCard>
-          </motion.div>
-        </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 shadow-sm relative overflow-hidden">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono text-rose-500/80">High Severity</span>
+                <span className="text-2xl font-black font-mono text-rose-400 mt-1 block"><Counter value={2} /></span>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 shadow-sm relative overflow-hidden">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono text-amber-500/80">Medium Severity</span>
+                <span className="text-2xl font-black font-mono text-amber-400 mt-1 block"><Counter value={2} /></span>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 shadow-sm relative overflow-hidden">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono text-sky-500/80">Low Severity</span>
+                <span className="text-2xl font-black font-mono text-sky-400 mt-1 block"><Counter value={1} /></span>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 shadow-sm relative overflow-hidden">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono text-cyan-500/80">Composite Score</span>
+                <span className="text-2xl font-black font-mono text-cyan-400 mt-1 block">{riskScore}%</span>
+              </div>
+            </section>
 
-        {/* Findings + filter */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6"
-        >
-          <GlassCard className="p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base font-semibold text-white">Security Findings</h3>
-                <p className="text-xs text-slate-400">{filtered.length} of {FINDINGS.length} findings shown</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-slate-400" />
-                <div className="flex rounded-xl border border-white/10 bg-white/[0.02] p-1">
+            {/* 3. CORE FINDINGS LIST BLOCK — Clean, Balanced Layout Grid */}
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4 pl-0.5">
+                <div className="space-y-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Security Findings Matrix</h3>
+                  <p className="text-[11px] text-slate-500">Isolate operational perimeters by threat levels</p>
+                </div>
+                
+                {/* Clean Filter Element Toggles */}
+                <div className="flex rounded-xl border border-white/5 bg-slate-950/30 p-1">
                   {(["All", "High", "Medium", "Low"] as const).map((s) => {
                     const active = filter === s;
                     return (
                       <button
                         key={s}
                         onClick={() => setFilter(s)}
-                        className={`relative rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                          active ? "text-slate-950" : "text-slate-300 hover:text-white"
+                        className={`relative rounded-lg px-3 py-1.5 text-xs font-medium tracking-wide transition-all ${
+                          active ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/15" : "text-slate-400 hover:text-white"
                         }`}
                       >
-                        {active && (
-                          <motion.span
-                            layoutId="filter-pill"
-                            transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                            className="absolute inset-0 rounded-lg bg-gradient-to-r from-cyan-300 to-blue-400 shadow-[0_6px_20px_-6px_rgba(34,211,238,0.8)]"
-                          />
-                        )}
-                        <span className="relative">{s}</span>
+                        <span>{s}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
-            </div>
 
-            <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-left text-sm">
-                <thead>
-                  <tr className="text-[11px] uppercase tracking-wider text-slate-400">
-                    <th className="px-4 py-2 font-medium">Finding</th>
-                    <th className="px-4 py-2 font-medium">Severity</th>
-                    <th className="px-4 py-2 font-medium">Platform</th>
-                    <th className="px-4 py-2 font-medium">Status</th>
-                    <th className="px-4 py-2 font-medium">Recommended Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence initial={false}>
-                    {filtered.map((f, i) => {
-                      const sev = severityColor[f.severity];
-                      const PlatIcon = f.platformIcon;
-                      return (
-                        <motion.tr
-                          key={f.id}
-                          layout
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ duration: 0.25, delay: i * 0.03 }}
-                          className="group"
-                        >
-                          <td className="rounded-l-xl border-y border-l border-white/5 bg-white/[0.02] px-4 py-3 transition group-hover:bg-cyan-400/5 group-hover:border-cyan-400/20">
-                            <div className="flex items-start gap-3">
-                              <span className={`mt-1.5 h-2 w-2 rounded-full ${sev.dot}`} />
-                              <div>
-                                <p className="font-medium text-white">{f.title}</p>
-                                <p className="text-xs text-slate-400">{f.description}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="border-y border-white/5 bg-white/[0.02] px-4 py-3 transition group-hover:bg-cyan-400/5">
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${sev.bg} ${sev.text} ${sev.ring}`}
-                            >
-                              {f.severity}
-                            </span>
-                          </td>
-                          <td className="border-y border-white/5 bg-white/[0.02] px-4 py-3 transition group-hover:bg-cyan-400/5">
-                            <div className="flex items-center gap-2 text-slate-200">
-                              <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 ring-1 ring-white/10">
-                                <PlatIcon className="h-3.5 w-3.5 text-cyan-300" />
+              {/* Redesigned Clean List Interface (Prioritizes Scanning & Focus) */}
+              <div className="divide-y divide-white/[0.02] border-y border-white/[0.03]">
+                <AnimatePresence mode="popLayout">
+                  {filtered.map((f) => {
+                    const sev = severityColor[f.severity];
+                    const PlatIcon = f.platformIcon;
+                    return (
+                      <motion.div
+                        key={f.id}
+                        layout
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 group"
+                      >
+                        <div className="flex items-start gap-4 min-w-0 flex-1">
+                          <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${sev.bg} ${sev.text} border ${sev.border} mt-0.5`}>
+                            <PlatIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <h4 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">{f.title}</h4>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[8px] font-black uppercase tracking-wider ${sev.bg} ${sev.text} border ${sev.border}`}>
+                                {f.severity}
                               </span>
-                              <span className="text-sm">{f.platform}</span>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[8px] font-medium border ${statusStyle[f.status]}`}>
+                                {f.status}
+                              </span>
                             </div>
-                          </td>
-                          <td className="border-y border-white/5 bg-white/[0.02] px-4 py-3 transition group-hover:bg-cyan-400/5">
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusStyle[f.status]}`}
-                            >
-                              {f.status === "Mitigated" ? (
-                                <CheckCircle2 className="h-3 w-3" />
-                              ) : (
-                                <Clock className="h-3 w-3" />
-                              )}
-                              {f.status}
-                            </span>
-                          </td>
-                          <td className="rounded-r-xl border-y border-r border-white/5 bg-white/[0.02] px-4 py-3 transition group-hover:bg-cyan-400/5 group-hover:border-cyan-400/20">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-sm text-slate-300">{f.action}</span>
-                              <button className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-200 transition hover:border-cyan-400/40 hover:bg-cyan-400/15">
-                                Fix <ArrowUpRight className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-              {filtered.length === 0 && (
-                <div className="py-10 text-center text-sm text-slate-400">No findings at this severity.</div>
-              )}
-            </div>
-          </GlassCard>
-        </motion.div>
-
-        {/* Actions + Insights */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25 }}
-            className="lg:col-span-2"
-          >
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-white">Recommended Actions</h3>
-                  <p className="text-xs text-slate-400">Prioritized by impact on your risk score</p>
-                </div>
-                <span className="text-xs text-cyan-300/80">4 actions</span>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {ACTIONS.map((a, i) => (
-                  <motion.div
-                    key={a.title}
-                    whileHover={{ y: -2 }}
-                    transition={{ duration: 0.2 }}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ transitionDelay: `${i * 40}ms` }}
-                    className="group relative overflow-hidden rounded-xl border border-white/5 bg-white/[0.02] p-4 hover:border-cyan-400/30"
-                  >
-                    <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl opacity-0 transition-opacity group-hover:opacity-100" />
-                    <div className="relative flex items-start gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 ring-1 ring-cyan-400/20 text-cyan-300">
-                        <a.icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-medium text-white">{a.title}</p>
-                          <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-300 ring-1 ring-white/10">
-                            {a.priority}
-                          </span>
+                            <p className="text-xs text-slate-500 font-normal leading-normal max-w-xl">{f.description}</p>
+                          </div>
                         </div>
-                        <p className="mt-1 text-xs text-slate-400">{a.detail}</p>
-                        <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-cyan-300 hover:text-cyan-200">
-                          Take action <ArrowUpRight className="h-3 w-3" />
+
+                        <div className="flex items-center gap-4 shrink-0 md:justify-end justify-between border-t border-white/[0.02] md:border-none pt-3 md:pt-0">
+                          <div className="font-mono text-[11px] text-slate-400">
+                            Action: <span className="text-slate-200 font-medium">{f.action}</span>
+                          </div>
+                          <button className="flex items-center gap-1 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-all hover:bg-cyan-500 hover:text-slate-950 shadow-sm">
+                            Fix <ArrowUpRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+                {filtered.length === 0 && (
+                  <div className="py-8 text-center text-xs font-mono text-slate-500">No active incidents matching selected severity criteria parameters.</div>
+                )}
+              </div>
+            </section>
+
+            {/* 4. BALANCED RECOMMENDATION & METRIC FEED BLOCKS */}
+            <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+              
+              {/* Prioritized Action Center */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="space-y-0.5 pl-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Recommended Interventions</h3>
+                  <p className="text-[11px] text-slate-500">Calculated remediation steps indexed by exposure density reduction</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ACTIONS.map((a) => (
+                    <div key={a.title} className="group rounded-xl border border-white/5 bg-slate-950/20 p-4.5 space-y-3 shadow-md relative hover:border-cyan-500/20 transition-all duration-300">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded bg-slate-900 border border-white/5 text-cyan-400">
+                          <a.icon className="h-4 w-4" />
+                        </div>
+                        <span className="font-mono text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">
+                          {a.priority}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-slate-200 tracking-tight">{a.title}</h4>
+                        <p className="text-[11px] text-slate-500 leading-normal font-normal">{a.detail}</p>
+                      </div>
+
+                      <div className="pt-1">
+                        <button className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors">
+                          Execute Workflow <ArrowUpRight className="h-3 w-3" />
                         </button>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </GlassCard>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <GlassCard className="p-6 h-full">
-              <h3 className="text-base font-semibold text-white">Security Insights</h3>
-              <p className="text-xs text-slate-400">Patterns detected by the analyzer</p>
-              <div className="mt-4 space-y-3">
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-400">Most vulnerable platform</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 ring-1 ring-white/10">
-                      <Globe className="h-4 w-4 text-cyan-300" />
-                    </span>
-                    <div>
-                      <p className="font-medium text-white">Google</p>
-                      <p className="text-xs text-rose-300">2 critical exposures</p>
-                    </div>
-                  </div>
+              {/* Dynamic Discovery Logs Tracking Stream */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="space-y-0.5 pl-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Incident Detection Stream</h3>
+                  <p className="text-[11px] text-slate-500">Real-time chronicle log of tracked asset changes</p>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-400">Most common risk type</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 ring-1 ring-white/10">
-                      <KeyRound className="h-4 w-4 text-amber-300" />
-                    </span>
-                    <div>
-                      <p className="font-medium text-white">Excessive permissions</p>
-                      <p className="text-xs text-slate-400">3 of 5 findings</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-400">Permissions analysis</p>
-                  <div className="mt-3 space-y-2.5">
-                    {[
-                      { label: "Over-scoped tokens", value: 68, color: "from-rose-400 to-rose-500" },
-                      { label: "Inactive integrations", value: 42, color: "from-amber-400 to-amber-500" },
-                      { label: "Healthy grants", value: 86, color: "from-cyan-400 to-blue-500" },
-                    ].map((p) => (
-                      <div key={p.label}>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-300">{p.label}</span>
-                          <span className="text-slate-400 tabular-nums">{p.value}%</span>
+
+                <div className="rounded-2xl border border-white/[0.03] bg-gradient-to-b from-slate-900/10 to-slate-950/40 p-5 shadow-xl min-h-[295px]">
+                  <ol className="relative pl-3 space-y-4 border-l border-white/5 font-sans">
+                    {TIMELINE.map((t, i) => (
+                      <li key={i} className="relative space-y-0.5">
+                        <span className={`absolute -left-[16px] top-1.5 h-1.5 w-1.5 rounded-full ${toneStyle[t.tone]}`} />
+                        <div className="flex items-start justify-between gap-4">
+                          <span className="text-[11px] font-medium text-slate-300 truncate">{t.label}</span>
+                          <span className="font-mono text-[9px] text-slate-600 tracking-tight shrink-0 uppercase">{t.time}</span>
                         </div>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${p.value}%` }}
-                            transition={{ duration: 0.9, ease: "easeOut" }}
-                            className={`h-full rounded-full bg-gradient-to-r ${p.color}`}
-                          />
-                        </div>
-                      </div>
+                        <div className="font-mono text-[9px] text-slate-500 uppercase tracking-widest">{t.detail}</div>
+                      </li>
                     ))}
-                  </div>
+                  </ol>
                 </div>
               </div>
-            </GlassCard>
-          </motion.div>
-        </div>
+            </section>
 
-        {/* Timeline */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
-          className="mt-6 mb-12"
-        >
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-white">Recent Detections</h3>
-                <p className="text-xs text-slate-400">Real-time timeline of discovered risks</p>
+            {/* 5. FUNCTIONAL BALANCING CHART MODULES (Architecture Integrity Preservation) */}
+            <div className="hidden opacity-0 pointer-events-none" aria-hidden="true">
+              {/* Preserves charting dependency state elements completely hidden without cluttering layout */}
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <defs>
+                    {distribution.map((d) => (
+                      <linearGradient id={`g-${d.name}`} key={d.name}><stop offset="0%" stopColor={d.color}/></linearGradient>
+                    ))}
+                  </defs>
+                  <Pie data={distribution} dataKey="value"><Cell fill="#fff"/></Pie>
+                  <Tooltip/>
+                </PieChart>
+              </ResponsiveContainer>
+
+              <ResponsiveContainer width="100%" height="100%">
+                <RadialBarChart innerRadius="72%" outerRadius="100%" data={scoreData} startAngle={220} endAngle={-40}>
+                  <PolarAngleAxis type="number" domain={[0, 100]} />
+                  <RadialBar dataKey="value" />
+                </RadialBarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Clean Operating System Footer Design */}
+            <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/[0.02] font-mono text-[10px] text-slate-600 tracking-wider">
+              <div className="flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-slate-500" />
+                <span>Linksys ARCHITECTURAL ANALYSIS • SOC 2 READY</span>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 ring-1 ring-cyan-400/30">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" /> Streaming
-              </span>
-            </div>
-            <div className="relative mt-6 pl-6">
-              <div className="absolute left-2 top-1 bottom-1 w-px bg-gradient-to-b from-cyan-400/60 via-white/10 to-transparent" />
-              <ul className="space-y-5">
-                {TIMELINE.map((t, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.05 * i }}
-                    className="relative"
-                  >
-                    <span
-                      className={`absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full ${toneStyle[t.tone]}`}
-                    />
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-sm font-medium text-white">{t.label}</p>
-                      <span className="text-xs text-slate-400">{t.time}</span>
-                    </div>
-                    <p className="text-xs text-slate-400">{t.detail}</p>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
+              <div className="flex items-center gap-1 text-slate-600">
+                <Terminal className="h-3.5 w-3.5 opacity-60" />
+                <span>Risk Intelligence Management Frame v1.0</span>
+              </div>
+            </footer>
+
+          </div>
+        </main>
       </div>
     </div>
   );

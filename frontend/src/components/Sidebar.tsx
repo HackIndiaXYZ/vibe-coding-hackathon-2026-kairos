@@ -69,7 +69,6 @@ export default function Sidebar({ currentPath }: SidebarProps) {
           {!collapsed && (
             <div className="leading-tight">
               <div className="text-sm font-semibold">LinkSys</div>
-              <div className="text-[10px] text-cyan-300/80">PRO</div>
             </div>
           )}
         </div>

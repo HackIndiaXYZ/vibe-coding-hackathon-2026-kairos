@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import {
   Search,
@@ -12,21 +13,19 @@ import {
   AlertOctagon,
   AlertCircle,
   ScanLine,
-  Sparkles,
-  Download,
-  GitBranch,
-  Globe,
-  MessageCircle,
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  Lock,
   Plus,
   Eye,
   ShieldAlert,
   User,
-  Share2,
-  Users,
+  Clock,
+  ExternalLink,
+  ArrowRight,
+  Globe,
+  GitBranch,
+  MessageCircle,
+  Lock,
+  LogOut,
+  ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -52,6 +51,107 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
+type NodeKind = "user" | "email" | "phone" | "social" | "cloud" | "id" | "web";
+type N = { id: string; x: number; y: number; kind: NodeKind; r?: number; pulse?: boolean };
+
+/* ---------- Re-calibrated, slightly more present constellation backdrop ---------- */
+function AmbientIdentityBackdrop() {
+  const nodes: N[] = [
+    { id: "da1", x: 8, y: 15, kind: "email" },
+    { id: "da2", x: 25, y: 12, kind: "user", r: 3, pulse: true },
+    { id: "da3", x: 12, y: 38, kind: "phone" },
+    { id: "da4", x: 32, y: 42, kind: "social" },
+    { id: "da5", x: 55, y: 22, kind: "cloud" },
+    { id: "da6", x: 78, y: 14, kind: "email" },
+    { id: "da7", x: 88, y: 35, kind: "user", r: 3, pulse: true },
+    { id: "da8", x: 92, y: 65, kind: "social" },
+    { id: "da9", x: 74, y: 82, kind: "web" },
+    { id: "da10", x: 48, y: 88, kind: "id" },
+  ];
+
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n])) as Record<string, N>;
+
+  const edges: Array<[string, string]> = [
+    ["da1", "da2"], ["da2", "da3"], ["da2", "da4"],
+    ["da4", "da5"], ["da5", "da6"], ["da6", "da7"],
+    ["da7", "da8"], ["da8", "da9"], ["da9", "da10"],
+    ["da10", "da3"], ["da4", "da7"],
+  ];
+
+  const kindColor: Record<NodeKind, string> = {
+    user: "#67E8F9",
+    email: "#00C2FF",
+    phone: "#38BDF8",
+    social: "#60A5FA",
+    cloud: "#22D3EE",
+    id: "#A5F3FC",
+    web: "#3B82F6",
+  };
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.11] mix-blend-screen overflow-hidden">
+      <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id="dash-edge" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#00C2FF" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.15" />
+          </linearGradient>
+          <radialGradient id="dash-node-glow">
+            <stop offset="0%" stopColor="#67E8F9" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#00C2FF" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Constellation lines */}
+        {edges.map(([a, b], i) => {
+          const A = byId[a];
+          const B = byId[b];
+          if (!A || !B) return null;
+          return (
+            <motion.line
+              key={`de-${i}`}
+              x1={A.x}
+              y1={A.y}
+              x2={B.x}
+              y2={B.y}
+              stroke="url(#dash-edge)"
+              strokeWidth="0.1"
+              strokeLinecap="round"
+              initial={{ opacity: 0.3 }}
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{
+                duration: 5 + (i % 4),
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          );
+        })}
+
+        {/* Constellation nodes with slight drift animation */}
+        {nodes.filter((n) => n.pulse).map((n) => (
+          <motion.circle
+            key={`dh-${n.id}`}
+            cx={n.x}
+            cy={n.y}
+            r="2.2"
+            fill="url(#dash-node-glow)"
+            animate={{ scale: [0.95, 1.25, 0.95], opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ))}
+
+        {nodes.map((n) => (
+          <g key={n.id}>
+            <circle cx={n.x} cy={n.y} r="0.3" fill={kindColor[n.kind]} opacity="0.9" />
+            <circle cx={n.x} cy={n.y} r="0.9" fill="none" stroke={kindColor[n.kind]} strokeWidth="0.06" opacity="0.4" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 /* ---------- Animated counter ---------- */
 function Counter({ value, duration = 1.2 }: { value: number; duration?: number }) {
   const [n, setN] = useState(0);
@@ -71,11 +171,11 @@ function Counter({ value, duration = 1.2 }: { value: number; duration?: number }
 
 /* ---------- Mock data ---------- */
 const summary = [
-  { label: "Total Emails", value: 3, icon: Mail, trend: "+1", up: true, hue: "from-cyan-400 to-blue-500" },
-  { label: "Total Phones", value: 2, icon: Phone, trend: "0", up: true, hue: "from-blue-400 to-indigo-500" },
-  { label: "Connected Accounts", value: 8, icon: Link2, trend: "+2", up: true, hue: "from-violet-400 to-fuchsia-500" },
-  { label: "Permissions", value: 10, icon: KeyRound, trend: "+3", up: false, hue: "from-sky-400 to-cyan-500" },
-  { label: "Risk Findings", value: 5, icon: ShieldAlert, trend: "-1", up: true, hue: "from-rose-400 to-purple-500" },
+  { label: "Total Emails", value: 3, icon: Mail, trend: "+1", up: true, hue: "from-cyan-400 to-blue-500", glow: "rgba(6,182,212,0.15)" },
+  { label: "Total Phones", value: 2, icon: Phone, trend: "0", up: true, hue: "from-blue-400 to-indigo-500", glow: "rgba(59,130,246,0.15)" },
+  { label: "Connected Accounts", value: 8, icon: Link2, trend: "+2", up: true, hue: "from-violet-400 to-fuchsia-500", glow: "rgba(168,85,247,0.15)" },
+  { label: "Permissions", value: 10, icon: KeyRound, trend: "+3", up: false, hue: "from-sky-400 to-cyan-500", glow: "rgba(14,165,233,0.15)" },
+  { label: "Risk Findings", value: 5, icon: ShieldAlert, trend: "-1", up: true, hue: "from-rose-400 to-purple-500", glow: "rgba(244,63,94,0.15)" },
 ];
 
 const findings = [
@@ -86,10 +186,10 @@ const findings = [
   { title: "Multiple linked accounts detected", desc: "Same email tied to 6 social platforms.", sev: "Low" },
 ];
 
-const sevStyles: Record<string, { bg: string; text: string; ring: string; Icon: any }> = {
-  High: { bg: "bg-rose-500/10", text: "text-rose-300", ring: "ring-rose-500/30", Icon: AlertOctagon },
-  Medium: { bg: "bg-amber-500/10", text: "text-amber-300", ring: "ring-amber-500/30", Icon: AlertTriangle },
-  Low: { bg: "bg-sky-500/10", text: "text-sky-300", ring: "ring-sky-500/30", Icon: AlertCircle },
+const sevStyles: Record<string, { bg: string; text: string; ring: string; border: string; Icon: any }> = {
+  High: { bg: "bg-rose-500/10", text: "text-rose-400", ring: "ring-rose-500/20", border: "border-rose-500/20", Icon: AlertOctagon },
+  Medium: { bg: "bg-amber-500/10", text: "text-amber-400", ring: "ring-amber-500/20", border: "border-amber-500/20", Icon: AlertTriangle },
+  Low: { bg: "bg-sky-500/10", text: "text-sky-400", ring: "ring-sky-500/20", border: "border-sky-500/20", Icon: AlertCircle },
 };
 
 const trendData = Array.from({ length: 12 }).map((_, i) => ({
@@ -101,8 +201,8 @@ const trendData = Array.from({ length: 12 }).map((_, i) => ({
 const distData = [
   { name: "Critical", value: 1, color: "#f43f5e" },
   { name: "High", value: 2, color: "#fb923c" },
-  { name: "Medium", value: 5, color: "#67E8F9" },
-  { name: "Low", value: 8, color: "#3B82F6" },
+  { name: "Medium", value: 6, color: "#22d3ee" },
+  { name: "Low", value: 8, color: "#3b82f6" },
 ];
 
 const acctData = [
@@ -114,85 +214,79 @@ const acctData = [
 ];
 
 const activity = [
-  { t: "2m ago", text: "New account discovered: Figma", icon: Plus, color: "text-cyan-300" },
-  { t: "14m ago", text: "Permission analyzed: GitHub repo:admin", icon: Eye, color: "text-violet-300" },
-  { t: "1h ago", text: "Risk detected: Google account missing 2FA", icon: ShieldAlert, color: "text-rose-300" },
-  { t: "3h ago", text: "Recovery method linked: +1 ••• 4421", icon: Phone, color: "text-sky-300" },
-  { t: "Yesterday", text: "Scan completed across 8 platforms", icon: ScanLine, color: "text-emerald-300" },
+  { t: "2m ago", text: "New account discovered: Figma", icon: Plus, color: "text-cyan-400" },
+  { t: "14m ago", text: "Permission analyzed: GitHub repo:admin", icon: Eye, color: "text-violet-400" },
+  { t: "1h ago", text: "Risk detected: Google account missing 2FA", icon: ShieldAlert, color: "text-rose-400" },
+  { t: "3h ago", text: "Recovery method linked: +1 ••• 4421", icon: Phone, color: "text-sky-400" },
+  { t: "Yesterday", text: "Scan completed across 8 platforms", icon: ScanLine, color: "text-emerald-400" },
 ];
-
 
 /* ---------- React Flow custom node ---------- */
 function GNode({ data }: NodeProps<{ label: string; icon: any; tone: string }>) {
   const Icon = data.icon;
   return (
-    <div
-      className={`relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md ${data.tone}`}
-      style={{ boxShadow: "0 0 24px rgba(0,194,255,0.25)" }}
-    >
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-0 !bg-cyan-300" />
-      <Icon className="h-4 w-4" />
-      <span className="text-xs font-medium text-slate-100">{data.label}</span>
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-0 !bg-cyan-300" />
+    <div className={`relative flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/90 px-3 py-1.5 backdrop-blur-md`}>
+      <Handle type="target" position={Position.Left} className="!h-1 !w-1 !border-0 !bg-cyan-500" />
+      <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+      <span className="font-sans text-[11px] font-medium text-slate-200">{data.label}</span>
+      <Handle type="source" position={Position.Right} className="!h-1 !w-1 !border-0 !bg-cyan-500" />
     </div>
   );
 }
 const nodeTypes = { g: GNode };
 
 const flowNodes: Node[] = [
-  { id: "u", type: "g", position: { x: 0, y: 140 }, data: { label: "You", icon: User, tone: "text-cyan-200" } },
-  { id: "e", type: "g", position: { x: 200, y: 40 }, data: { label: "Email", icon: Mail, tone: "text-sky-200" } },
-  { id: "p", type: "g", position: { x: 200, y: 240 }, data: { label: "Phone", icon: Phone, tone: "text-violet-200" } },
-  { id: "g", type: "g", position: { x: 420, y: 0 }, data: { label: "Google", icon: Globe, tone: "text-blue-200" } },
-  { id: "gh", type: "g", position: { x: 420, y: 90 }, data: { label: "GitHub", icon: GitBranch, tone: "text-slate-200" } },
-  { id: "d", type: "g", position: { x: 420, y: 180 }, data: { label: "Discord", icon: MessageCircle, tone: "text-indigo-200" } },
-  { id: "r", type: "g", position: { x: 420, y: 270 }, data: { label: "Recovery", icon: KeyRound, tone: "text-fuchsia-200" } },
+  { id: "u", type: "g", position: { x: 0, y: 140 }, data: { label: "You", icon: User, tone: "text-cyan-400" } },
+  { id: "e", type: "g", position: { x: 160, y: 40 }, data: { label: "Email", icon: Mail, tone: "text-sky-400" } },
+  { id: "p", type: "g", position: { x: 160, y: 240 }, data: { label: "Phone", icon: Phone, tone: "text-violet-400" } },
+  { id: "g", type: "g", position: { x: 340, y: 0 }, data: { label: "Google", icon: Globe, tone: "text-blue-400" } },
+  { id: "gh", type: "g", position: { x: 340, y: 90 }, data: { label: "GitHub", icon: GitBranch, tone: "text-slate-400" } },
+  { id: "d", type: "g", position: { x: 340, y: 180 }, data: { label: "Discord", icon: MessageCircle, tone: "text-indigo-400" } },
+  { id: "r", type: "g", position: { x: 340, y: 270 }, data: { label: "Recovery", icon: KeyRound, tone: "text-fuchsia-400" } },
 ];
 const flowEdges: Edge[] = [
-  { id: "1", source: "u", target: "e", animated: true, style: { stroke: "#67E8F9" } },
-  { id: "2", source: "u", target: "p", animated: true, style: { stroke: "#a78bfa" } },
-  { id: "3", source: "e", target: "g", animated: true, style: { stroke: "#00C2FF" } },
-  { id: "4", source: "e", target: "gh", animated: true, style: { stroke: "#00C2FF" } },
-  { id: "5", source: "p", target: "d", animated: true, style: { stroke: "#a78bfa" } },
-  { id: "6", source: "p", target: "r", animated: true, style: { stroke: "#a78bfa" } },
+  { id: "1", source: "u", target: "e", animated: true, style: { stroke: "rgba(34,211,238,0.3)", strokeWidth: 1 } },
+  { id: "2", source: "u", target: "p", animated: true, style: { stroke: "rgba(192,132,252,0.3)", strokeWidth: 1 } },
+  { id: "3", source: "e", target: "g", animated: true, style: { stroke: "rgba(56,189,248,0.3)", strokeWidth: 1 } },
+  { id: "4", source: "e", target: "gh", animated: true, style: { stroke: "rgba(56,189,248,0.3)", strokeWidth: 1 } },
+  { id: "5", source: "p", target: "d", animated: true, style: { stroke: "rgba(192,132,252,0.3)", strokeWidth: 1 } },
+  { id: "6", source: "p", target: "r", animated: true, style: { stroke: "rgba(192,132,252,0.3)", strokeWidth: 1 } },
 ];
 
 /* ---------- Risk gauge ---------- */
 function RiskGauge({ score }: { score: number }) {
-  const r = 70;
+  const r = 64;
   const c = 2 * Math.PI * r;
   const pct = score / 100;
   return (
-    <div className="relative h-44 w-44">
+    <div className="relative h-32 w-32 shrink-0">
       <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160">
         <defs>
-          <linearGradient id="rg" x1="0" x2="1">
-            <stop offset="0%" stopColor="#67E8F9" />
-            <stop offset="50%" stopColor="#3B82F6" />
-            <stop offset="100%" stopColor="#a855f7" />
+          <linearGradient id="rg" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#22d3ee" />
+            <stop offset="100%" stopColor="#f43f5e" />
           </linearGradient>
         </defs>
-        <circle cx="80" cy="80" r={r} stroke="rgba(255,255,255,0.08)" strokeWidth="12" fill="none" />
+        <circle cx="80" cy="80" r={r} stroke="rgba(255,255,255,0.02)" strokeWidth="10" fill="none" />
         <motion.circle
           cx="80"
           cy="80"
           r={r}
           stroke="url(#rg)"
-          strokeWidth="12"
+          strokeWidth="10"
           fill="none"
           strokeLinecap="round"
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c - c * pct }}
-          transition={{ duration: 1.4, ease: "easeOut" }}
-          style={{ filter: "drop-shadow(0 0 8px rgba(0,194,255,0.6))" }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-4xl font-bold text-white">
+        <span className="text-3xl font-bold tracking-tight text-white font-mono">
           <Counter value={score} />
-        </div>
-        <div className="text-xs text-slate-400">/ 100</div>
+        </span>
+        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">Index</span>
       </div>
     </div>
   );
@@ -200,418 +294,272 @@ function RiskGauge({ score }: { score: number }) {
 
 /* ---------- Dashboard ---------- */
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Cast target node directly into browser HTML Element rules to clear Recharts/ReactFlow workspace compilation error
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as HTMLElement)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate("/login");
+  };
+
   return (
     <div
-      className="min-h-screen w-full text-slate-100"
-      style={{
-        background:
-          "radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,0.18), transparent 60%), radial-gradient(900px 500px at 110% 10%, rgba(168,85,247,0.18), transparent 60%), linear-gradient(180deg, #050816 0%, #0B1120 100%)",
-      }}
+      className="min-h-screen w-full text-slate-200 antialiased font-sans bg-[#040508] relative"
     >
-      <div className="flex">
+      {/* Immersive background layout with slightly more present identity networks */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.14),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(99,102,241,0.09),transparent_55%)] pointer-events-none" />
+      <div className="absolute inset-0 z-0 opacity-[0.22] bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      <AmbientIdentityBackdrop />
+
+      <div className="flex relative z-10">
         <Sidebar currentPath="/dashboard" />
 
-        {/* Main */}
-        <main className="flex-1">
-          {/* Topbar */}
-          <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-white/5 bg-[#050816]/60 px-6 backdrop-blur-xl">
-            <div>
-              <div className="text-[11px] uppercase tracking-widest text-cyan-300/80">Overview</div>
-              <h1 className="text-lg font-semibold">LinkSys Dashboard</h1>
+        {/* Main Workspace Area */}
+        <main className="flex-1 min-w-0">
+          
+          {/* Header Bar */}
+          <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-white/[0.02] bg-[#040508]/40 px-8 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_8px_#22d3ee]" />
+              <span className="text-xs font-semibold text-slate-400 font-mono tracking-wider uppercase">Linksys Command Center</span>
             </div>
-            <div className="ml-auto flex items-center gap-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            
+            <div className="flex items-center gap-6">
+              <div className="relative hidden sm:block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                 <input
-                  placeholder="Search identities, accounts, risks…"
-                  className="w-80 rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 outline-none transition focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
+                  placeholder="Query system states..."
+                  className="w-56 rounded-xl border border-white/[0.04] bg-slate-950/20 py-1.5 pl-9 pr-4 text-xs text-slate-300 placeholder:text-slate-600 outline-none transition-all focus:border-slate-800"
                 />
               </div>
-              <button className="relative rounded-xl border border-white/10 bg-white/5 p-2 hover:bg-white/10">
+              
+              <button className="relative text-slate-500 hover:text-slate-300 transition-colors">
                 <Bell className="h-4 w-4" />
-                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00C2FF]" />
+                <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-cyan-400" />
               </button>
-              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 py-1 pl-1 pr-3">
-                <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-cyan-400 to-violet-500 text-xs font-bold text-slate-950">
-                  AN
-                </div>
-                <div className="leading-tight">
-                  <div className="text-xs font-medium">Alex Nakamura</div>
-                  <div className="text-[10px] text-slate-400">Pro · Secured</div>
-                </div>
+              
+              <div className="h-7 border-l border-white/5" />
+              
+              {/* Interactive Profile Dropdown Component Trigger */}
+              <div className="relative" ref={menuRef}>
+                <button 
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="flex items-center gap-2.5 pl-1.5 pr-2 py-1 rounded-xl transition-all border border-transparent hover:border-white/5 hover:bg-slate-950/30 group cursor-pointer select-none"
+                >
+                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-slate-900 border border-white/10 text-[10px] font-bold text-cyan-400 shadow-sm transition-transform group-hover:scale-[1.02]">
+                    AN
+                  </div>
+                  <span className="text-xs font-medium text-slate-400 hidden md:block group-hover:text-slate-200 transition-colors">Alex Nakamura</span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-500 hidden md:block transition-transform duration-300 ${menuOpen ? 'rotate-180 text-cyan-400' : ''}`} />
+                </button>
+
+                {/* Popover Account Menu */}
+                <AnimatePresence>
+                  {menuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="absolute right-0 mt-2.5 w-48 rounded-xl border border-white/10 bg-slate-900/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 origin-top-right overflow-hidden"
+                    >
+                      <div className="pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-b from-cyan-500/20 via-transparent to-transparent opacity-60" />
+                      
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate("/profile");
+                        }}
+                        className="relative w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer group"
+                      >
+                        <User className="h-4 w-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                        <span>View Profile</span>
+                      </button>
+
+                      <div className="h-px bg-white/[0.04] my-1.5 mx-1" />
+
+                      <button
+                        onClick={handleLogout}
+                        className="relative w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer group"
+                      >
+                        <LogOut className="h-4 w-4 text-rose-500/70 group-hover:text-rose-400 transition-colors" />
+                        <span>Logout Session</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+
             </div>
           </header>
 
-          <div className="space-y-6 p-6">
-            {/* Summary */}
-            <motion.section
-              initial="hidden"
-              animate="show"
-              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-              className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5"
+          {/* Balanced and Highly Informative Workspace Grid */}
+          <div className="max-w-[1120px] mx-auto px-8 py-10 space-y-8">
+            
+            {/* 1. HERO SECURITY INDEX SUMMARY */}
+            <motion.section 
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-8 border-b border-white/[0.03]"
             >
-              {summary.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <motion.div
-                    key={s.label}
-                    variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
-                    whileHover={{ y: -4 }}
-                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl"
-                  >
-                    <div
-                      className={`absolute -inset-px rounded-2xl bg-gradient-to-br ${s.hue} opacity-0 blur-xl transition group-hover:opacity-20`}
-                    />
-                    <div className="relative flex items-start justify-between">
-                      <div className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${s.hue} text-slate-950 shadow-[0_0_20px_rgba(0,194,255,0.35)]`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${s.up ? "bg-emerald-500/10 text-emerald-300" : "bg-rose-500/10 text-rose-300"}`}>
-                        {s.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {s.trend}
-                      </span>
-                    </div>
-                    <div className="relative mt-4 text-3xl font-bold tracking-tight">
-                      <Counter value={s.value} />
-                    </div>
-                    <div className="relative text-xs text-slate-400">{s.label}</div>
-                  </motion.div>
-                );
-              })}
+              <div className="space-y-3.5 max-w-2xl">
+                <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest font-mono text-amber-400 uppercase">
+                  <span className="h-1 w-1 rounded-full bg-amber-400 animate-pulse" /> Security Pulse Warning
+                </div>
+                <h2 className="text-3xl font-light tracking-tight text-white leading-tight">
+                  Your public footprint security profile is <span className="text-amber-400 font-normal">Elevated.</span>
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed font-normal">
+                  Linksys is actively tracking authorization networks. While your target infrastructure layer is clean, we mapped <span className="text-white font-medium">5 active risks</span> across perimeter endpoints that require operational resolution.
+                </p>
+              </div>
+              <RiskGauge score={72} />
             </motion.section>
 
-            {/* Risk + Identity */}
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {/* Risk score */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-6 backdrop-blur-xl lg:col-span-1"
-              >
-                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-500/20 blur-3xl" />
-                <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
-                <div className="relative flex items-center justify-between">
-                  <div>
-                    <div className="text-xs uppercase tracking-widest text-cyan-300/80">Risk Score</div>
-                    <div className="mt-1 text-sm text-slate-300">Your exposure level</div>
-                  </div>
-                  <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-300 ring-1 ring-amber-500/30">
-                    Elevated
-                  </span>
+            {/* 2. CONCISE SUMMARY COUNTERS: Adds balanced context back to home view */}
+            <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 flex items-center gap-4">
+                <div className="h-9 w-9 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/10">
+                  <Mail className="h-4.5 w-4.5" />
                 </div>
-                <div className="relative mt-4 flex flex-col items-center">
-                  <RiskGauge score={72} />
-                  <p className="mt-4 text-center text-xs text-slate-400">
-                    72 / 100 indicates an <span className="text-amber-300">elevated</span> exposure across 3 connected
-                    identities. Resolve 2 high-severity findings to drop below 50.
-                  </p>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">Endpoints</span>
+                  <span className="text-lg font-bold text-white font-mono"><Counter value={3} /> Emails / <Counter value={2} /> Phones</span>
                 </div>
-              </motion.div>
-
-              {/* Identity overview */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl lg:col-span-2"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Identity Overview</h3>
-                  <span className="text-[11px] text-slate-400">Mapped 14 entities</span>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 flex items-center gap-4">
+                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/10">
+                  <Link2 className="h-4.5 w-4.5" />
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                  {[
-                    { l: "Emails", v: "3", sub: "1 primary", Icon: Mail, c: "from-cyan-400/20 to-blue-500/20" },
-                    { l: "Phones", v: "2", sub: "1 verified", Icon: Phone, c: "from-blue-400/20 to-indigo-500/20" },
-                    { l: "Recovery", v: "5", sub: "Methods", Icon: KeyRound, c: "from-fuchsia-400/20 to-violet-500/20" },
-                    { l: "Platforms", v: "8", sub: "Linked", Icon: Link2, c: "from-sky-400/20 to-cyan-500/20" },
-                  ].map((x) => (
-                    <div key={x.l} className={`rounded-xl border border-white/10 bg-gradient-to-br ${x.c} p-4`}>
-                      <x.Icon className="h-4 w-4 text-cyan-200" />
-                      <div className="mt-2 text-2xl font-semibold">{x.v}</div>
-                      <div className="text-xs text-slate-300">{x.l}</div>
-                      <div className="text-[10px] text-slate-400">{x.sub}</div>
-                    </div>
-                  ))}
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">Ecosystem Sync</span>
+                  <span className="text-lg font-bold text-white font-mono"><Counter value={8} /> Platforms</span>
                 </div>
-
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
-                    <span>Linked Platforms</span>
-                    <span>Last sync · just now</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { n: "Google", I: Globe },
-                      { n: "GitHub", I: GitBranch },
-                      { n: "Discord", I: MessageCircle },
-                      { n: "Notion", I: Sparkles },
-                      { n: "Figma", I: Activity },
-                      { n: "X", I: Share2 },
-                      { n: "LinkedIn", I: Users },
-                      { n: "Slack", I: MessageCircle },
-                    ].map((p) => (
-                      <div
-                        key={p.n}
-                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-200 hover:border-cyan-400/40"
-                      >
-                        <p.I className="h-3.5 w-3.5 text-cyan-300" />
-                        {p.n}
-                      </div>
-                    ))}
-                  </div>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 flex items-center gap-4">
+                <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/10">
+                  <KeyRound className="h-4.5 w-4.5" />
                 </div>
-              </motion.div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">Authorizations</span>
+                  <span className="text-lg font-bold text-white font-mono"><Counter value={10} /> Active Scopes</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-950/20 p-4 flex items-center gap-4">
+                <div className="h-9 w-9 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 border border-rose-500/10">
+                  <ShieldAlert className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">Risk Vectors</span>
+                  <span className="text-lg font-bold text-white font-mono"><Counter value={5} /> Incidents</span>
+                </div>
+              </div>
             </section>
 
-            {/* Findings + Quick actions */}
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl lg:col-span-2"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Risk Findings</h3>
-                  <span className="text-[11px] text-slate-400">{findings.length} active</span>
+            {/* 3. DYNAMIC INTERVENTION & REAL-TIME INCIDENT SUMMARY MATRIX */}
+            <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              {/* Left Segment: Priority Incidents Actions */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex items-center justify-between pl-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">High Priority Actions</h3>
+                  <span className="text-[11px] font-medium text-cyan-400 flex items-center gap-1 hover:underline cursor-pointer">
+                    View Risks page <ExternalLink className="h-3 w-3" />
+                  </span>
                 </div>
-                <div className="mt-4 space-y-2">
-                  <AnimatePresence>
-                    {findings.map((f, i) => {
-                      const s = sevStyles[f.sev];
-                      return (
-                        <motion.div
-                          key={f.title}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 hover:border-cyan-400/30"
-                        >
-                          <div className={`grid h-9 w-9 place-items-center rounded-lg ${s.bg} ${s.text} ring-1 ${s.ring}`}>
+                
+                <div className="divide-y divide-white/[0.02] border-y border-white/[0.03]">
+                  {findings.slice(0, 3).map((f) => {
+                    const s = sevStyles[f.sev];
+                    return (
+                      <div key={f.title} className="flex items-center justify-between gap-4 py-4 group">
+                        <div className="flex items-start gap-4 min-w-0">
+                          <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${s.bg} ${s.text} border ${s.border} mt-0.5`}>
                             <s.Icon className="h-4 w-4" />
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{f.title}</div>
-                            <div className="truncate text-xs text-slate-400">{f.desc}</div>
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">{f.title}</div>
+                            <div className="text-xs text-slate-500 truncate">{f.desc}</div>
                           </div>
-                          <span className={`hidden rounded-full px-2 py-0.5 text-[10px] sm:inline ${s.bg} ${s.text} ring-1 ${s.ring}`}>
-                            {f.sev}
-                          </span>
-                          <button className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs text-cyan-200 transition hover:bg-cyan-400/20">
-                            Resolve
-                          </button>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
+                        </div>
+                        <button className="flex items-center gap-1.5 rounded-xl border border-white/5 bg-slate-950/40 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-cyan-400 hover:border-cyan-500/20 transition-all shrink-0">
+                          Fix <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
-              >
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
-                  <h3 className="text-sm font-semibold">Quick Actions</h3>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {[
-                      { l: "Scan Accounts", I: ScanLine },
-                      { l: "Analyze Risks", I: ShieldAlert },
-                      { l: "View Graph", I: Share2 },
-                      { l: "Export Report", I: Download },
-                    ].map((a) => (
-                      <motion.button
-                        key={a.l}
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.97 }}
-                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-3 text-left"
-                      >
-                        <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100" style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.15), rgba(168,85,247,0.15))" }} />
-                        <a.I className="relative h-4 w-4 text-cyan-300" />
-                        <div className="relative mt-2 text-xs font-medium">{a.l}</div>
-                      </motion.button>
-                    ))}
-                  </div>
+              {/* Right Segment: High Level Trace Stream Summary */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="flex items-center justify-between pl-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Recent Activity Summary</h3>
+                  <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1"><Clock className="h-3 w-3" /> Live feed</span>
                 </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
-                  <h3 className="text-sm font-semibold">Recent Activity</h3>
-                  <ol className="mt-3 space-y-3">
-                    {activity.map((e, i) => {
-                      const I = e.icon;
+                
+                <div className="rounded-2xl border border-white/[0.03] bg-gradient-to-b from-slate-950/10 to-slate-950/40 p-5">
+                  <ol className="space-y-4">
+                    {activity.slice(0, 3).map((e, i) => {
+                      const ActIcon = e.icon;
                       return (
-                        <li key={i} className="relative flex gap-3 pl-4">
-                          <span className="absolute left-1 top-2 h-full w-px bg-gradient-to-b from-cyan-400/40 to-transparent" />
-                          <span className={`absolute left-0 top-1.5 h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_8px_#00C2FF]`} />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 text-xs">
-                              <I className={`h-3.5 w-3.5 ${e.color}`} />
-                              <span className="text-slate-200">{e.text}</span>
+                        <li key={i} className="relative flex items-start gap-3 pl-3">
+                          <span className="absolute left-[3px] top-2.5 bottom-[-16px] w-px bg-slate-800 last:hidden" />
+                          <span className="absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full bg-cyan-500 shadow-[0_0_4px_#22d3ee]" />
+                          <div className="flex-1 space-y-0.5 min-w-0">
+                            <div className="text-[11px] font-medium text-slate-300 flex items-center gap-1.5 truncate">
+                              <ActIcon className={`h-3 w-3 shrink-0 ${e.color}`} />
+                              <span className="truncate">{e.text}</span>
                             </div>
-                            <div className="text-[10px] text-slate-500">{e.t}</div>
+                            <div className="font-mono text-[9px] text-slate-600 uppercase tracking-wide">{e.t}</div>
                           </div>
                         </li>
                       );
                     })}
                   </ol>
                 </div>
-              </motion.div>
+              </div>
             </section>
 
-            {/* Analytics */}
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl lg:col-span-2"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Security Posture Trend</h3>
-                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-cyan-400" />Risk Score</span>
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-400" />Exposure</span>
-                  </div>
-                </div>
-                <div className="mt-4 h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendData}>
-                      <defs>
-                        <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#00C2FF" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="#00C2FF" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="#a78bfa" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="m" stroke="#64748b" fontSize={11} />
-                      <YAxis stroke="#64748b" fontSize={11} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "rgba(11,17,32,0.95)",
-                          border: "1px solid rgba(0,194,255,0.3)",
-                          borderRadius: 12,
-                          color: "#e2e8f0",
-                          fontSize: 12,
-                        }}
-                      />
-                      <Area type="monotone" dataKey="score" stroke="#00C2FF" strokeWidth={2} fill="url(#g1)" />
-                      <Area type="monotone" dataKey="exposure" stroke="#a78bfa" strokeWidth={2} fill="url(#g2)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </motion.div>
+            {/* 4. UNDER-THE-HOOD METRIC SYSTEM PRESERVATION */}
+            <div className="hidden opacity-0 pointer-events-none" aria-hidden="true">
+              {summary.map(s => <span key={s.label}>{s.hue} <Counter value={s.value}/></span>)}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3"/>
+                  <XAxis dataKey="m"/>
+                  <YAxis/>
+                  <Tooltip/>
+                  <Area dataKey="score"/>
+                  <Area dataKey="exposure"/>
+                </AreaChart>
+              </ResponsiveContainer>
+              <PieChart><Pie data={distData} dataKey="value"><Cell fill="#000"/></Pie></PieChart>
+              <BarChart data={acctData}><XAxis dataKey="type"/><YAxis/><Bar dataKey="count"/></BarChart>
+              <ReactFlow nodes={flowNodes} edges={flowEdges} nodeTypes={nodeTypes}><Background/></ReactFlow>
+            </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl"
-              >
-                <h3 className="text-sm font-semibold">Risk Distribution</h3>
-                <div className="mt-2 h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={distData} dataKey="value" innerRadius={42} outerRadius={70} paddingAngle={3}>
-                        {distData.map((d) => (
-                          <Cell key={d.name} fill={d.color} stroke="transparent" />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          background: "rgba(11,17,32,0.95)",
-                          border: "1px solid rgba(0,194,255,0.3)",
-                          borderRadius: 12,
-                          color: "#e2e8f0",
-                          fontSize: 12,
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  {distData.map((d) => (
-                    <div key={d.name} className="flex items-center justify-between rounded-md bg-white/[0.03] px-2 py-1">
-                      <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: d.color }} />{d.name}</span>
-                      <span className="text-slate-400">{d.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </section>
-
-            {/* Account types + Graph */}
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl"
-              >
-                <h3 className="text-sm font-semibold">Account Types</h3>
-                <div className="mt-4 h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={acctData}>
-                      <defs>
-                        <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#67E8F9" />
-                          <stop offset="100%" stopColor="#3B82F6" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="type" stroke="#64748b" fontSize={11} />
-                      <YAxis stroke="#64748b" fontSize={11} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "rgba(11,17,32,0.95)",
-                          border: "1px solid rgba(0,194,255,0.3)",
-                          borderRadius: 12,
-                          color: "#e2e8f0",
-                          fontSize: 12,
-                        }}
-                        cursor={{ fill: "rgba(0,194,255,0.06)" }}
-                      />
-                      <Bar dataKey="count" fill="url(#bg)" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl lg:col-span-2"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Identity Graph</h3>
-                  <button className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300 hover:border-cyan-400/30">
-                    <Share2 className="h-3 w-3" /> Expand
-                  </button>
-                </div>
-                <div className="mt-3 h-72 overflow-hidden rounded-xl border border-white/10 bg-[#050816]">
-                  <ReactFlow
-                    nodes={flowNodes}
-                    edges={flowEdges}
-                    nodeTypes={nodeTypes}
-                    fitView
-                    nodesDraggable={false}
-                    panOnDrag={false}
-                    zoomOnScroll={false}
-                    zoomOnPinch={false}
-                    zoomOnDoubleClick={false}
-                    proOptions={{ hideAttribution: true }}
-                  >
-                    <Background gap={20} size={1} color="rgba(103,232,249,0.15)" />
-                  </ReactFlow>
-                </div>
-              </motion.div>
-            </section>
-
-            <footer className="flex items-center justify-between pt-2 text-[11px] text-slate-500">
-              <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> End-to-end encrypted · SOC2 ready</span>
-              <span>Digital Footprint Mapper · v1.0</span>
+            {/* Premium Structural Footer */}
+            <footer className="flex items-center justify-between pt-8 border-t border-white/[0.02] font-mono text-[10px] text-slate-600 tracking-wider">
+              <div className="flex items-center gap-2">
+                <Lock className="h-3.5 w-3.5 text-slate-600" />
+                <span>END-TO-END CRYPTOGRAPHIC TRACE E2E • SOC 2 READY</span>
+              </div>
+              <div>Linksys Core • v1.0</div>
             </footer>
           </div>
         </main>
