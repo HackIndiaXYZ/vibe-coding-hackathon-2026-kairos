@@ -23,6 +23,10 @@ import {
   Lock,
   Plus,
   Eye,
+  ShieldAlert,
+  User,
+  Share2,
+  Users,
 } from "lucide-react";
 import {
   ResponsiveContainer,

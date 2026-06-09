@@ -1,62 +1,65 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, Text } from "@react-three/drei";
+import * as THREE from "three";
 import Sidebar from "../components/Sidebar";
 
 const NODES = [
   {
     id: "center",
-    x: 334, y: 212,
+    x: 0, y: 0, z: 0,
     type: "identity",
     label: "Bliss",
     sub: "Primary Identity",
   },
   {
     id: "email1",
-    x: 118, y: 100,
+    x: -3, y: 2, z: 2,
     type: "email",
     label: "Gmail",
     tooltip: "Primary email · 6 linked accounts · High risk",
   },
   {
     id: "email2",
-    x: 102, y: 216,
+    x: -3, y: 0, z: -2,
     type: "email",
     label: "sanika.work@",
     tooltip: "sanika.work@gmail.com · 3 linked accounts · Medium risk",
   },
   {
     id: "phone1",
-    x: 104, y: 336,
+    x: -3, y: -2, z: 2,
     type: "phone",
     label: "+91 XXXXXXXX21",
     tooltip: "+91 XXXXXXXX21 · 4 recovery accounts · Verified",
   },
   {
     id: "instagram",
-    x: 541, y: 76,
+    x: 3, y: 2, z: 1,
     type: "platform",
     label: "Instagram",
     tooltip: "Linked via email · Public profile",
   },
   {
     id: "linkedin",
-    x: 542, y: 206,
+    x: 3, y: 0, z: -1,
     type: "platform",
     label: "LinkedIn",
     tooltip: "Linked via work email · Professional",
   },
   {
     id: "github",
-    x: 538, y: 336,
+    x: 3, y: -2, z: 1,
     type: "platform",
     label: "GitHub",
     tooltip: "sanika_dev · 3 linked platforms",
   },
   {
     id: "risk",
-    x: 328, y: 422,
+    x: 0, y: -3.5, z: 0,
     type: "risk",
-    label: "⚠ High Risk Account",
-    sub: "Reused credentials detected",
+    label: "⚠ High Risk",
+    sub: "Reused credentials",
     tooltip: "Credentials reused across 3+ platforms",
   },
 ];
@@ -70,59 +73,178 @@ const EDGES = [
   { from: "center", to: "github",    color: "#3b82f6" },
   { from: "center", to: "risk",      color: "#ef4444" },
 ];
+const NODE_COLOR_MAP: Record<string, { color: string; emissive: string }> = {
+  center: {
+    color: "#00E5FF",
+    emissive: "#00B8D4",
+  }, // Main Identity
 
-const NODE_STYLES = {
-  email:    { fill: "rgba(139,92,246,0.18)", stroke: "#8b5cf6", text: "#c4b5fd" },
-  email2:   { fill: "rgba(34,211,238,0.14)", stroke: "#22d3ee", text: "#67e8f9" },
-  phone:    { fill: "rgba(45,212,191,0.14)", stroke: "#2dd4bf", text: "#5eead4" },
-  platform: { fill: "rgba(99,102,241,0.18)", stroke: "#818cf8", text: "#a5b4fc" },
-  risk:     { fill: "rgba(239,68,68,0.16)",  stroke: "#f87171", text: "#fca5a5" },
+  email1: {
+    color: "#7C4DFF",
+    emissive: "#651FFF",
+  },
+
+  email2: {
+    color: "#B388FF",
+    emissive: "#7C4DFF",
+  }, // Emails
+
+  phone1: {
+    color: "#00E676",
+    emissive: "#00C853",
+  }, // Phone
+
+  instagram: {
+    color: "#FF4081",
+    emissive: "#F50057",
+  },
+
+  linkedin: {
+    color: "#448AFF",
+    emissive: "#2962FF",
+  },
+
+  github: {
+    color: "#64FFDA",
+    emissive: "#1DE9B6",
+  }, // Platforms
+
+  risk: {
+    color: "#FF1744",
+    emissive: "#D50000",
+  }, // Risk
 };
 
-const NODE_COLOR_MAP = {
-  email1:    { fill: "rgba(139,92,246,0.18)", stroke: "#8b5cf6", text: "#c4b5fd" },
-  email2:    { fill: "rgba(34,211,238,0.14)", stroke: "#22d3ee", text: "#67e8f9" },
-  phone1:    { fill: "rgba(45,212,191,0.14)", stroke: "#2dd4bf", text: "#5eead4" },
-  instagram: { fill: "rgba(99,102,241,0.18)", stroke: "#818cf8", text: "#a5b4fc" },
-  linkedin:  { fill: "rgba(16,185,129,0.15)", stroke: "#34d399", text: "#6ee7b7" },
-  github:    { fill: "rgba(59,130,246,0.15)", stroke: "#60a5fa", text: "#93c5fd" },
-  risk:      { fill: "rgba(239,68,68,0.16)",  stroke: "#f87171", text: "#fca5a5" },
-};
-
-function getNodePos(id) {
+function getNodePos(id: string) {
   return NODES.find((n) => n.id === id);
 }
 
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16) / 255,
+    g: parseInt(result[2], 16) / 255,
+    b: parseInt(result[3], 16) / 255,
+  } : { r: 1, g: 1, b: 1 };
+}
+
+function Node3D({ node, isHovered, onHover }: { node: any; isHovered: boolean; onHover: (id: string | null) => void }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const colorData = NODE_COLOR_MAP[node.id] || NODE_COLOR_MAP.center;
+  const colorRgb = hexToRgb(colorData.color);
+  const emissiveRgb = hexToRgb(colorData.emissive);
+  const isCenter = node.id === "center";
+  const radius = isCenter ? 0.5 : 0.35;
+
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x += 0.003;
+      meshRef.current.rotation.y += 0.005;
+    }
+  });
+
+  return (
+    <group position={[node.x, node.y, node.z]}>
+      <mesh
+        ref={meshRef}
+        onPointerEnter={() => onHover(node.id)}
+        onPointerLeave={() => onHover(null)}
+        scale={isHovered ? 1.2 : 1}
+      >
+        <sphereGeometry args={[radius, 32, 32]} />
+        <meshPhongMaterial
+          color={new THREE.Color(colorRgb.r, colorRgb.g, colorRgb.b)}
+          emissive={new THREE.Color(emissiveRgb.r, emissiveRgb.g, emissiveRgb.b)}
+          emissiveIntensity={isHovered ? 1 : 0.}
+          wireframe={false}
+        />
+      </mesh>
+      <Text
+        position={[0, -1.2, 0.1]}
+        fontSize={0.3}
+        color={colorData.color}
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={1.5}
+      >
+        {node.label}
+      </Text>
+      {node.sub && (
+        <Text
+          position={[0, -1.5, 0.1]}
+          fontSize={0.15}
+          color={colorData.color}
+          anchorX="center"
+          anchorY="middle"
+        >
+          {node.sub}
+        </Text>
+      )}
+    </group>
+  );
+}
+
+function Edge3D({ from, to, color }: { from: any; to: any; color: string }) {
+  const points = [
+    new THREE.Vector3(from.x, from.y, from.z),
+    new THREE.Vector3(to.x, to.y, to.z),
+  ];
+  const colorRgb = hexToRgb(color);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(
+      new Float32Array(points.flatMap(p => [p.x, p.y, p.z])),
+      3
+    )
+  );
+
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial
+        color={new THREE.Color(colorRgb.r, colorRgb.g, colorRgb.b)}
+        linewidth={2}
+        transparent
+        opacity={0.6}
+      />
+    </lineSegments>
+  );
+}
+
+function Graph3DContent({ hoveredNode, onHover }: { hoveredNode: string | null; onHover: (id: string | null) => void }) {
+  return (
+    <>
+      <ambientLight intensity={0.6} />
+      <pointLight position={[10, 10, 10]} intensity={1} />
+      <pointLight position={[-10, -10, -10]} intensity={0.5} />
+
+      {/* Edges */}
+      {EDGES.map((edge) => {
+        const fromNode = getNodePos(edge.from);
+        const toNode = getNodePos(edge.to);
+        if (!fromNode || !toNode) return null;
+        return (
+          <Edge3D key={`${edge.from}-${edge.to}`} from={fromNode} to={toNode} color={edge.color} />
+        );
+      })}
+
+      {/* Nodes */}
+      {NODES.map((node) => (
+        <Node3D
+          key={node.id}
+          node={node}
+          isHovered={hoveredNode === node.id}
+          onHover={onHover}
+        />
+      ))}
+
+      <OrbitControls autoRotate autoRotateSpeed={2} />
+    </>
+  );
+}
+
 export default function LinkSysGraph() {
-  const [tooltip, setTooltip] = useState(null);
-  const [hovered, setHovered] = useState(null);
-  const wrapRef = useRef(null);
-
-  const handleMouseEnter = useCallback((node, e) => {
-    if (!node.tooltip) return;
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    let x = e.clientX - rect.left + 12;
-    let y = e.clientY - rect.top - 16;
-    if (x + 170 > rect.width) x = e.clientX - rect.left - 170;
-    setTooltip({ title: node.label, sub: node.tooltip, x, y });
-    setHovered(node.id);
-  }, []);
-
-  const handleMouseMove = useCallback((node, e) => {
-    if (!node.tooltip) return;
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    let x = e.clientX - rect.left + 12;
-    let y = e.clientY - rect.top - 16;
-    if (x + 170 > rect.width) x = e.clientX - rect.left - 170;
-    setTooltip((prev) => prev ? { ...prev, x, y } : null);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setTooltip(null);
-    setHovered(null);
-  }, []);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#05070d", color: "#e2e8f0" }}>
@@ -137,261 +259,109 @@ export default function LinkSysGraph() {
           fontFamily: "'Inter', sans-serif",
         }}
       >
-      {/* Ambient blobs */}
-      <div style={{ pointerEvents: "none", position: "absolute", inset: 0, zIndex: 0 }}>
-        <div style={{ position: "absolute", top: -80, left: "20%", width: 360, height: 360, borderRadius: "50%", background: "rgba(34,211,238,0.12)", filter: "blur(90px)" }} />
-        <div style={{ position: "absolute", top: "30%", right: -60, width: 300, height: 300, borderRadius: "50%", background: "rgba(99,102,241,0.1)", filter: "blur(90px)" }} />
-        <div style={{ position: "absolute", bottom: 0, left: "30%", width: 280, height: 280, borderRadius: "50%", background: "rgba(79,70,229,0.08)", filter: "blur(90px)" }} />
-        <div style={{
-          position: "absolute", inset: 0, opacity: 0.04,
-          backgroundImage: "linear-gradient(rgba(125,211,252,0.4) 1px,transparent 1px),linear-gradient(90deg,rgba(125,211,252,0.4) 1px,transparent 1px)",
-          backgroundSize: "40px 40px",
-          maskImage: "radial-gradient(ellipse at top,black 30%,transparent 75%)",
-          WebkitMaskImage: "radial-gradient(ellipse at top,black 30%,transparent 75%)",
-        }} />
-      </div>
-
-      {/* Header */}
-      <div style={{
-        position: "relative", zIndex: 1,
-        padding: "20px 24px 16px",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        background: "rgba(15,23,42,0.6)",
-        backdropFilter: "blur(12px)",
-      }}>
-        <div style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "4px 10px", borderRadius: 999,
-          border: "1px solid rgba(34,211,238,0.3)",
-          background: "rgba(34,211,238,0.08)",
-          fontSize: 10, textTransform: "uppercase",
-          letterSpacing: "0.18em", color: "#67e8f9",
-          marginBottom: 10,
-        }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-          </svg>
-          LinkSys Graph
+        {/* Ambient blobs */}
+        <div style={{ pointerEvents: "none", position: "absolute", inset: 0, zIndex: 0 }}>
+          <div style={{ position: "absolute", top: -80, left: "20%", width: 360, height: 360, borderRadius: "50%", background: "rgba(34,211,238,0.12)", filter: "blur(90px)" }} />
+          <div style={{ position: "absolute", top: "30%", right: -60, width: 300, height: 300, borderRadius: "50%", background: "rgba(99,102,241,0.1)", filter: "blur(90px)" }} />
+          <div style={{ position: "absolute", bottom: 0, left: "30%", width: 280, height: 280, borderRadius: "50%", background: "rgba(79,70,229,0.08)", filter: "blur(90px)" }} />
         </div>
 
-        <h1 style={{
-          fontSize: 22, fontWeight: 600, marginBottom: 4,
-          background: "linear-gradient(90deg,#a78bfa,#22d3ee)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
+        {/* Header */}
+        <div style={{
+          position: "relative", zIndex: 10,
+          padding: "20px 24px 16px",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          background: "rgba(15,23,42,0.8)",
+          backdropFilter: "blur(12px)",
         }}>
-          Identity Graph
-        </h1>
-        <p style={{ fontSize: 12, color: "#94a3b8" }}>
-          Visual mapping of accounts, recovery methods and risks
-        </p>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "4px 10px", borderRadius: 999,
+            border: "1px solid rgba(34,211,238,0.3)",
+            background: "rgba(34,211,238,0.08)",
+            fontSize: 10, textTransform: "uppercase",
+            letterSpacing: "0.18em", color: "#67e8f9",
+            marginBottom: 10,
+          }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+            LinkSys Graph 3D
+          </div>
 
-        {/* Stats */}
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <h1 style={{
+            fontSize: 22, fontWeight: 600, marginBottom: 4,
+            background: "linear-gradient(90deg,#a78bfa,#22d3ee)",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
+            Identity Graph
+          </h1>
+          <p style={{ fontSize: 12, color: "#94a3b8" }}>
+            3D visualization of accounts, recovery methods and risks
+          </p>
+
+          {/* Stats */}
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            {[
+              { label: "Accounts", value: 8, color: "#f1f5f9" },
+              { label: "Identities", value: 5, color: "#f1f5f9" },
+              { label: "Risks", value: 3, color: "#f87171" },
+            ].map((s) => (
+              <div key={s.label} style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10, padding: "8px 14px",
+              }}>
+                <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                  {s.label}
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: s.color, lineHeight: 1.2, marginTop: 1 }}>
+                  {s.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div style={{
+          position: "relative", zIndex: 10,
+          display: "flex", gap: 16, padding: "8px 24px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          fontSize: 11,
+          background: "rgba(15,23,42,0.4)",
+          backdropFilter: "blur(8px)",
+        }}>
           {[
-            { label: "Accounts", value: 8, color: "#f1f5f9" },
-            { label: "Identities", value: 5, color: "#f1f5f9" },
-            { label: "Risks", value: 3, color: "#f87171" },
-          ].map((s) => (
-            <div key={s.label} style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 10, padding: "8px 14px",
-            }}>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.12em" }}>
-                {s.label}
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 600, color: s.color, lineHeight: 1.2, marginTop: 1 }}>
-                {s.value}
-              </div>
+            { label: "Identity", color: "#a78bfa" },
+            { label: "Email",    color: "#22d3ee" },
+            { label: "Phone",    color: "#2dd4bf" },
+            { label: "Platform", color: "#60a5fa" },
+            { label: "Risk",     color: "#f87171" },
+          ].map((l) => (
+            <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{
+                width: 7, height: 7, borderRadius: "50%",
+                background: l.color,
+                boxShadow: `0 0 6px ${l.color}99`,
+              }} />
+              <span style={{ color: l.color }}>{l.label}</span>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Legend */}
-      <div style={{
-        position: "relative", zIndex: 1,
-        display: "flex", gap: 16, padding: "8px 24px",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        fontSize: 11,
-      }}>
-        {[
-          { label: "Identity", color: "#a78bfa" },
-          { label: "Email",    color: "#22d3ee" },
-          { label: "Phone",    color: "#2dd4bf" },
-          { label: "Platform", color: "#60a5fa" },
-          { label: "Risk",     color: "#f87171" },
-        ].map((l) => (
-          <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <div style={{
-              width: 7, height: 7, borderRadius: "50%",
-              background: l.color,
-              boxShadow: `0 0 6px ${l.color}99`,
-            }} />
-            <span style={{ color: l.color }}>{l.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Graph canvas */}
-      <div ref={wrapRef} style={{ position: "relative", zIndex: 1, flex: 1, overflow: "hidden" }}>
-        <style>{`
-          @keyframes dashMove { to { stroke-dashoffset: -20; } }
-          @keyframes glowPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
-          .edge-animated { stroke-dasharray: 5 5; animation: dashMove 1.5s linear infinite; }
-          .center-ring { animation: glowPulse 2.5s ease-in-out infinite; }
-        `}</style>
-
-        <svg
-          viewBox="0 0 680 480"
-          style={{ width: "100%", height: "100%", display: "block" }}
-        >
-          <defs>
-            <marker id="arrowV" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </marker>
-            <filter id="glowFilter">
-              <feGaussianBlur stdDeviation="3" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <filter id="riskGlow">
-              <feGaussianBlur stdDeviation="4" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <radialGradient id="centerGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#8b5cf6"/>
-              <stop offset="100%" stopColor="#6366f1"/>
-            </radialGradient>
-          </defs>
-
-          {/* Edges */}
-          {EDGES.map((edge) => {
-            const from = getNodePos(edge.from);
-            const to   = getNodePos(edge.to);
-            if (!from || !to) return null;
-            const isRisk = edge.to === "risk";
-            
-            // Calculate edge endpoints that stop at rectangle borders
-            const dx = to.x - from.x;
-            const dy = to.y - from.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx);
-            
-            // Rectangle dimensions
-            const width = isRisk ? 184 : 112;
-            const height = isRisk ? 44 : 40;
-            const halfW = width / 2;
-            const halfH = height / 2;
-            
-            // Find intersection point on rectangle edge
-            let offset = halfW / Math.abs(Math.cos(angle));
-            if (Math.abs(Math.sin(angle)) > 0.01) {
-              const offsetY = halfH / Math.abs(Math.sin(angle));
-              offset = Math.min(offset, offsetY);
-            }
-            
-            const x2 = to.x - Math.cos(angle) * offset;
-            const y2 = to.y - Math.sin(angle) * offset;
-            
-            return (
-              <line
-                key={`${edge.from}-${edge.to}`}
-                className="edge-animated"
-                x1={from.x} y1={from.y}
-                x2={x2}   y2={y2}
-                stroke={edge.color}
-                strokeWidth={isRisk ? 2 : 1.5}
-                opacity={hovered === edge.to || hovered === edge.from ? 1 : 0.7}
-                markerEnd="url(#arrowV)"
-                style={{ transition: "opacity 0.2s" }}
-              />
-            );
-          })}
-
-          {/* Regular nodes */}
-          {NODES.filter((n) => n.id !== "center").map((node) => {
-            const s = NODE_COLOR_MAP[node.id] || NODE_STYLES[node.type] || NODE_STYLES.platform;
-            const isRisk = node.id === "risk";
-            const isHov  = hovered === node.id;
-            return (
-              <g
-                key={node.id}
-                style={{ cursor: "pointer" }}
-                onMouseEnter={(e) => handleMouseEnter(node, e)}
-                onMouseMove={(e)  => handleMouseMove(node, e)}
-                onMouseLeave={handleMouseLeave}
-                filter={isRisk ? "url(#riskGlow)" : undefined}
-              >
-                <rect
-                  x={node.x - (isRisk ? 92 : 56)}
-                  y={node.y - 22}
-                  width={isRisk ? 184 : 112}
-                  height={isRisk ? 44 : 40}
-                  rx={10}
-                  fill={s.fill}
-                  stroke={s.stroke}
-                  strokeWidth={isRisk ? 2 : 1.5}
-                  opacity={isHov ? 1 : 0.9}
-                  style={{ transition: "opacity 0.2s" }}
-                />
-                <text
-                  x={node.x} y={node.y + (isRisk ? -5 : 5)}
-                  textAnchor="middle"
-                  fill={s.text}
-                  fontSize={isRisk ? 11 : 12}
-                  fontWeight={isRisk ? 600 : 500}
-                >
-                  {node.label}
-                </text>
-                {isRisk && (
-                  <text x={node.x} y={node.y + 12} textAnchor="middle" fill="#f87171" fontSize={9}>
-                    {node.sub}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-
-          {/* Center identity node */}
-          <g filter="url(#glowFilter)" style={{ cursor: "pointer" }}>
-            <circle cx={334} cy={212} r={52} fill="rgba(99,102,241,0.15)" stroke="#6366f1" strokeWidth={2}/>
-            <circle cx={334} cy={212} r={44} fill="url(#centerGrad)" opacity={0.9}/>
-            <text x={334} y={208} textAnchor="middle" fill="white" fontSize={14} fontWeight={600}>Bliss</text>
-            <text x={334} y={225} textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize={9}>Primary Identity</text>
-            <circle
-              className="center-ring"
-              cx={334} cy={212} r={52}
-              fill="none"
-              stroke="#a78bfa"
-              strokeWidth={1}
-              strokeDasharray="4 4"
-            />
-          </g>
-        </svg>
-
-        {/* Tooltip */}
-        {tooltip && (
-          <div style={{
-            position: "absolute",
-            left: tooltip.x, top: tooltip.y,
-            zIndex: 99, pointerEvents: "none",
-            background: "rgba(15,23,42,0.92)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 10, padding: "8px 12px",
-            fontSize: 11, color: "#e2e8f0",
-            backdropFilter: "blur(8px)",
-            maxWidth: 180,
-          }}>
-            <div style={{ fontWeight: 600, color: "#f1f5f9", marginBottom: 3, fontSize: 12 }}>
-              {tooltip.title}
-            </div>
-            <div style={{ color: "#94a3b8", lineHeight: 1.4 }}>
-              {tooltip.sub}
-            </div>
-          </div>
-        )}
-      </div>
+        {/* 3D Canvas */}
+        <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+          <Canvas
+            style={{ width: "100%", height: "100%" }}
+            camera={{ position: [0, 0, 8], fov: 50 }}
+            gl={{ alpha: true, antialias: true }}
+          >
+            <color attach="background" args={["#05070d"]} />
+            <Graph3DContent hoveredNode={hoveredNode} onHover={setHoveredNode} />
+          </Canvas>
+        </div>
       </div>
     </div>
   );

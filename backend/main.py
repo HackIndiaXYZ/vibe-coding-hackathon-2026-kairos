@@ -17,7 +17,7 @@ from app.api.risks import router as risks_router
 from app.api.graph import router as graph_router
 from app.api.permissions import router as permissions_router
 
-app = FastAPI(title="Digital Footprint Mapper API", version="1.0.0")
+app = FastAPI(title="LinkSys API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,4 +41,4 @@ app.include_router(permissions_router)
 
 @app.get("/")
 def root():
-    return {"message": "Digital Footprint Mapper API", "docs": "/docs"}
+    return {"message": "LinkSys API", "docs": "/docs"}
