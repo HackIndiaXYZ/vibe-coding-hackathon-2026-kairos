@@ -1,28 +1,15 @@
-from fastapi import APIRouter
-from fastapi import Depends
-
-from sqlalchemy.orm import Session
-
-from app.db.database import get_db
+from fastapi import APIRouter, Depends
 from app.api.dependencies import get_current_user
+from app.models.models import User
 
-from app.models.user import User
+router = APIRouter(prefix="/profile", tags=["Profile"])
 
-router = APIRouter(
-    prefix="/user",
-    tags=["User"]
-)
-
-
-@router.get("/profile")
-def get_profile(
-    current_user: int = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    user = (
-        db.query(User)
-        .filter(User.id == current_user)
-        .first()
-    )
-
-    return user
+@router.get("/")
+def get_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "avatar_url": current_user.avatar_url,
+        "created_at": current_user.created_at,
+    }

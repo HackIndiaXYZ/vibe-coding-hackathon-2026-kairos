@@ -1,147 +1,100 @@
-def analyze_accounts(
-    accounts,
-    permissions=None,
-    apps=None,
-    recovery_methods=None
-):
+from app.models.models import PlatformAccount, RiskFinding
+from sqlalchemy.orm import Session
+
+# Severity weights for score calculation
+SEVERITY_WEIGHTS = {
+    "critical": 25,
+    "high":     15,
+    "medium":    7,
+    "low":       2,
+}
+
+def analyze_and_save_risks(user_id: int, db: Session) -> list[RiskFinding]:
+    """
+    Run risk analysis for a user's accounts and persist findings.
+    Clears old findings first so re-runs are idempotent.
+    """
+    # Clear old findings
+    db.query(RiskFinding).filter(RiskFinding.user_id == user_id).delete()
+
+    accounts = db.query(PlatformAccount).filter(PlatformAccount.user_id == user_id).all()
     findings = []
 
-    # -------------------------
-    # Rule 1: No 2FA
-    # -------------------------
-    for account in accounts:
+    total = len(accounts)
+    finance_accounts = [a for a in accounts if a.category == "finance"]
+    no_2fa = [a for a in accounts if not a.has_2fa]
+    high_risk = [a for a in accounts if a.risk_level == "high"]
+    unknown = [a for a in accounts if a.category == "other"]
 
-        if not account.has_2fa:
+    # Rule 1: Too many accounts = large attack surface
+    if total > 30:
+        findings.append(_finding(user_id, "Large digital footprint", 
+            f"You have {total} discovered accounts. A large number of linked services increases your attack surface.",
+            "high", "exposure"))
+    elif total > 15:
+        findings.append(_finding(user_id, "Moderate digital footprint",
+            f"You have {total} discovered accounts. Consider reviewing and deleting unused ones.",
+            "medium", "exposure"))
 
-            findings.append({
-                "title": "No 2FA Enabled",
-                "severity": "high",
-                "description":
-                f"{account.platform_name} account does not have 2FA enabled.",
+    # Rule 2: No 2FA on finance accounts
+    finance_no_2fa = [a for a in finance_accounts if not a.has_2fa]
+    if finance_no_2fa:
+        names = ", ".join(a.platform_name for a in finance_no_2fa[:3])
+        findings.append(_finding(user_id, "Financial accounts without 2FA",
+            f"{names} — financial platforms without two-factor authentication are high-risk targets.",
+            "critical", "authentication"))
 
-                "recommendation":
-                "Enable Two-Factor Authentication immediately."
-            })
+    # Rule 3: Many accounts without 2FA
+    if len(no_2fa) > 10:
+        findings.append(_finding(user_id, "Most accounts lack 2FA",
+            f"{len(no_2fa)} of your accounts have no two-factor authentication enabled.",
+            "high", "authentication"))
+    elif len(no_2fa) > 5:
+        findings.append(_finding(user_id, "Several accounts lack 2FA",
+            f"{len(no_2fa)} accounts have no two-factor authentication.",
+            "medium", "authentication"))
 
-    # -------------------------
-    # Rule 2: Too Many Accounts
-    # -------------------------
-    if len(accounts) > 20:
+    # Rule 4: High risk domains detected
+    if high_risk:
+        names = ", ".join(a.platform_name for a in high_risk[:3])
+        findings.append(_finding(user_id, "High-risk accounts detected",
+            f"Accounts flagged as high risk: {names}. These may be temporary or suspicious services.",
+            "high", "suspicious"))
 
-        findings.append({
-            "title": "Excessive Number of Accounts",
-            "severity": "low",
-            "description":
-            "Large number of accounts detected.",
+    # Rule 5: Many unknown/uncategorized services
+    if len(unknown) > 10:
+        findings.append(_finding(user_id, "Many unrecognized services",
+            f"{len(unknown)} unrecognized domains found in your email history. Some may be unused or forgotten accounts.",
+            "medium", "exposure"))
 
-            "recommendation":
-            "Review and remove unused accounts."
-        })
+    # Rule 6: No finance accounts (informational — maybe fine)
+    # Skipped as not really a risk
 
-    # -------------------------
-    # Rule 3: Dangerous Permissions
-    # -------------------------
-    if permissions:
-
-        for permission in permissions:
-
-            if (
-                permission.scope.lower()
-                in [
-                    "full access",
-                    "admin",
-                    "write",
-                    "all"
-                ]
-            ):
-
-                findings.append({
-                    "title": "Excessive Permission Granted",
-                    "severity": "high",
-                    "description":
-                    f"Permission '{permission.scope}' provides extensive access.",
-
-                    "recommendation":
-                    "Review and revoke unnecessary permissions."
-                })
-
-    # -------------------------
-    # Rule 4: Risky Third Party Apps
-    # -------------------------
-    if apps:
-
-        for app in apps:
-
-            if hasattr(app, "risk_level"):
-
-                if (
-                    app.risk_level
-                    and app.risk_level.lower() == "high"
-                ):
-
-                    findings.append({
-                        "title": "Risky Third-Party Application",
-                        "severity": "high",
-                        "description":
-                        f"{app.name} is marked as high risk.",
-
-                        "recommendation":
-                        "Consider removing or restricting access."
-                    })
-
-    # -------------------------
-    # Rule 5: Too Many Recovery Methods
-    # -------------------------
-    if recovery_methods:
-
-        if len(recovery_methods) > 5:
-
-            findings.append({
-                "title": "Too Many Recovery Methods",
-                "severity": "medium",
-                "description":
-                "Multiple recovery methods are linked to accounts.",
-
-                "recommendation":
-                "Remove outdated recovery methods."
-            })
-
-    # -------------------------
-    # Rule 6: Blast Radius
-    # -------------------------
-    if len(accounts) >= 5:
-
-        findings.append({
-            "title": "High Blast Radius",
-            "severity": "high",
-            "description":
-            "One identity is connected to many accounts. A compromise could impact multiple services.",
-
-            "recommendation":
-            "Enable strong security controls on primary identities."
-        })
+    # Persist
+    for f in findings:
+        db.add(f)
+    db.commit()
+    for f in findings:
+        db.refresh(f)
 
     return findings
 
 
-def calculate_risk_score(findings):
-
-    score = 100
-
-    for finding in findings:
-
-        severity = finding["severity"].lower()
-
-        if severity == "high":
-            score -= 20
-
-        elif severity == "medium":
-            score -= 10
-
-        elif severity == "low":
-            score -= 5
-
-    if score < 0:
-        score = 0
-
+def calculate_risk_score(findings: list) -> int:
+    """
+    Score from 0 (terrible) to 100 (great).
+    Starts at 100, deducted by findings severity.
+    """
+    deduction = sum(SEVERITY_WEIGHTS.get(f.severity, 0) for f in findings)
+    score = max(0, 100 - deduction)
     return score
+
+
+def _finding(user_id, title, description, severity, category):
+    return RiskFinding(
+        user_id=user_id,
+        title=title,
+        description=description,
+        severity=severity,
+        category=category,
+    )
