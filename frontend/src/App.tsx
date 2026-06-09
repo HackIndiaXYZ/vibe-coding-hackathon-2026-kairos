@@ -5,7 +5,8 @@ import Dashboard from "./pages/Dashboard";
 import Risks from "./pages/Risks";
 import Identities from "./pages/Identities";
 import Accounts from "./pages/Accounts";
-import Profile from "./pages/profile";
+import Profile from "./pages/Profile";
+import Graph from "./pages/Graph";
 function App() {
   return (
     <BrowserRouter>
@@ -32,6 +33,10 @@ function App() {
         <Route
           path="/profile"
           element={<Profile />}
+        />
+        <Route
+          path="/graph"
+          element={<Graph />}
         />
       </Routes>
     </BrowserRouter>

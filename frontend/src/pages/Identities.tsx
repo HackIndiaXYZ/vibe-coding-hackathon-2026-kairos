@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Sidebar from "../components/Sidebar";
 import {
   Mail,
   Phone,
@@ -236,7 +237,9 @@ export default function Identities() {
   );
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05070d] text-slate-200 antialiased">
+    <div className="flex min-h-screen overflow-hidden bg-[#05070d] text-slate-200 antialiased">
+      <Sidebar currentPath="/identities" />
+      <div className="relative flex-1">
       {/* ambient background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-40 left-1/4 h-[480px] w-[480px] rounded-full bg-cyan-500/20 blur-[120px]" />
@@ -374,7 +377,7 @@ export default function Identities() {
 
         {/* emails */}
         <section className="mb-10">
-          <SectionHeader icon={Mail} title="Email Identities" subtitle="Addresses linked to your digital footprint" />
+          <SectionHeader icon={Mail} title="Email Identities" subtitle="Addresses linked to LinkSys" />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <AnimatePresence>
               {EMAILS.map((e, i) => (
@@ -628,6 +631,7 @@ export default function Identities() {
             All data shown is mocked for preview
           </span>
         </footer>
+      </div>
       </div>
     </div>
   );

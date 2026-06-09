@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
+import Sidebar from "../components/Sidebar";
 import {
   Shield,
   Mail,
@@ -224,7 +225,9 @@ function Ring({ value, max = 100, color = "#22d3ee" }: { value: number; max?: nu
 
 export default function Profile() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05070d] text-slate-200">
+    <div className="flex min-h-screen overflow-hidden bg-[#05070d] text-slate-200">
+      <Sidebar currentPath="/profile" />
+      <div className="relative flex-1">
       {/* Ambient background */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-cyan-500/20 blur-[140px]" />
@@ -529,6 +532,7 @@ export default function Profile() {
             </div>
           </GlassCard>
         </section>
+      </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Sidebar from "../components/Sidebar";
 import {
   Shield,
   ShieldAlert,
@@ -223,7 +224,9 @@ export default function Risks() {
   const scoreData = [{ name: "score", value: riskScore, fill: "url(#scoreGradient)" }];
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#05070d] text-slate-200">
+    <div className="flex min-h-screen w-full overflow-hidden bg-[#05070d] text-slate-200">
+      <Sidebar currentPath="/risks" />
+      <div className="relative flex-1">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-cyan-500/20 blur-[160px]" />
@@ -251,13 +254,13 @@ export default function Risks() {
           <div>
             <div className="flex items-center gap-2 text-xs font-medium text-cyan-300/80">
               <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
-              LIVE — DIGITAL FOOTPRINT MAPPER
+              LIVE — LINKSYS
             </div>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Risk Center
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Identity threats, risky permissions, and suspicious accounts detected across your footprint.
+              Identity threats, risky permissions, and suspicious accounts detected across LinkSys.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -708,6 +711,7 @@ export default function Risks() {
             </div>
           </GlassCard>
         </motion.div>
+      </div>
       </div>
     </div>
   );

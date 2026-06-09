@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import Sidebar from "../components/Sidebar";
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, Download, Eye, Fingerprint,
   GitBranch, Globe, KeyRound, Layers, Link2, Lock, Mail, Phone, PieChart as PieIcon,
@@ -180,7 +181,9 @@ export default function Accounts() {
   const filters: (typeof filter)[] = ["All", "Low", "Medium", "High", "2FA Enabled", "2FA Disabled"];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050816] text-slate-200">
+    <div className="flex min-h-screen overflow-hidden bg-[#050816] text-slate-200">
+      <Sidebar currentPath="/accounts" />
+      <div className="relative flex-1">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-40 left-1/4 h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
         <div className="absolute top-1/3 -right-32 h-[420px] w-[420px] rounded-full bg-blue-600/10 blur-[120px]" />
@@ -206,7 +209,7 @@ export default function Accounts() {
               Accounts <span className="bg-gradient-to-r from-cyan-300 via-sky-400 to-violet-400 bg-clip-text text-transparent">Management</span>
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400">
-              Visualize, audit and secure every digital account connected to your footprint — risk, 2FA, permissions and health, in one place.
+              Visualize, audit and secure every digital account connected to LinkSys — risk, 2FA, permissions and health, in one place.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -488,8 +491,9 @@ export default function Accounts() {
 
         <div className="mt-12 flex items-center justify-center gap-2 text-[11px] text-slate-500">
           <Shield className="h-3.5 w-3.5 text-cyan-400/70" />
-          Digital Footprint Mapper · Account Intelligence v1.0
+          LinkSys · Account Intelligence v1.0
         </div>
+      </div>
       </div>
     </div>
   );
