@@ -1,6 +1,6 @@
 # ⚙️ LinkSys — Setup Instructions
 
-> Full stack running locally in under 10 minutes.
+> Follow these steps to run LinkSys locally.
 
 ---
 
