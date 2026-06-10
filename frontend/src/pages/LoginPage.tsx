@@ -163,9 +163,8 @@ function IdentityBackdrop() {
 function SecurityConsoleMoat() {
   return (
     <div className="absolute inset-0 z-0 pointer-events-none hidden lg:block overflow-hidden">
-      {/* Concentric Cyber HUD Rings */}
       <div className="absolute left-[30%] top-1/2 -translate-y-1/2 w-[650px] h-[650px] rounded-full border border-cyan-500/10 flex items-center justify-center">
-        <motion.div 
+        <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
           className="w-[92%] h-[92%] rounded-full border border-dashed border-blue-500/10 flex items-center justify-center"
@@ -174,7 +173,6 @@ function SecurityConsoleMoat() {
         </motion.div>
       </div>
 
-      {/* Cybernetic Grid & Perimeter Lights */}
       <div className="absolute right-12 top-12 font-mono text-[9px] text-cyan-500/40 space-y-1 text-right">
         <div>CORE_ENV // SECURE_COMM_v1.3</div>
         <div>SYS_MATRIX_LOAD: NOMINAL</div>
@@ -217,21 +215,43 @@ function CyberPillars() {
   );
 }
 
+// Google SVG Icon — inline so no extra dependency needed
+function GoogleIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
-  
-  // Shared fields
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
-  // Registration specific fields
   const [fullName, setFullName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -259,6 +279,13 @@ export default function LoginPage() {
   const handleMouseLeave = () => {
     x.set(0);
     y.set(0);
+  };
+
+  const handleGoogleLogin = () => {
+    setGoogleLoading(true);
+    setError(null);
+    // Redirects to FastAPI which handles the OAuth flow
+    window.location.href = "http://localhost:8001/auth/google/login";
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -305,13 +332,11 @@ export default function LoginPage() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#03050d] text-slate-100 flex items-center justify-center selection:bg-cyan-500/30 selection:text-cyan-200">
-      {/* Cinematic Layering Mesh */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,194,255,0.2),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(59,130,246,0.15),transparent_60%)] animate-pulse [animation-duration:12s]" />
       <div className="absolute inset-0 opacity-[0.4]" style={{ backgroundImage: "linear-gradient(to right, rgba(0, 194, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 194, 255, 0.03) 1px, transparent 1px)", backgroundSize: "50px 50px" }} />
       <IdentityBackdrop />
       <SecurityConsoleMoat />
 
-      {/* Volumetric Beam Sweeper */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-500/60 to-transparent shadow-[0_0_20px_rgba(34,211,238,0.7)]"
@@ -319,10 +344,9 @@ export default function LoginPage() {
         transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* Main Container Layer */}
       <div className="relative z-10 w-full h-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 items-center px-6 lg:px-16 gap-12">
-        
-        {/* LEFT COLUMN: Deep Visual Storytelling Panel */}
+
+        {/* LEFT COLUMN */}
         <div className="relative hidden h-full flex-col justify-between py-12 lg:col-span-6 lg:flex pr-6">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -362,12 +386,9 @@ export default function LoginPage() {
                 Isolate leaked network nodes, reconstruct complex credential lineage graphs, and discover systemic security anomalies across the surface perimeter.
               </p>
             </div>
-
-            {/* Premium Informational Pillars */}
             <CyberPillars />
           </motion.div>
 
-          {/* Secure Compliance Anchor */}
           <div className="flex items-center gap-6 font-mono text-[9px] font-bold uppercase tracking-widest text-slate-500 border-t border-white/5 pt-4">
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
@@ -378,7 +399,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Cinematic Integrated Login / Register Form */}
+        {/* RIGHT COLUMN: Form */}
         <div className="flex items-center justify-center lg:col-span-6 w-full h-full py-6">
           <motion.div
             ref={cardRef}
@@ -390,12 +411,10 @@ export default function LoginPage() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="w-full max-w-[480px]"
           >
-            {/* Integrated, Larger Embedded Experience Shield */}
-            <div 
+            <div
               style={{ transform: "translateZ(40px)" }}
               className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#090f24]/90 to-[#030612]/95 p-8 sm:p-11 shadow-[0_40px_100px_-15px_rgba(0,0,0,0.9)] backdrop-blur-3xl"
             >
-              {/* Complex Reactive Light Rings Inside Form Card */}
               <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-cyan-500/10 blur-[60px]" />
               <div className="pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-blue-600/10 blur-[60px]" />
               <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-cyan-400/40 via-transparent to-blue-500/20 opacity-100" />
@@ -409,14 +428,40 @@ export default function LoginPage() {
                     {isRegister ? "Register Architecture" : "Reconstruct Identity"}
                   </h2>
                   <p className="mt-1.5 text-xs text-slate-400 max-w-xs">
-                    {isRegister 
-                      ? "Create an identity profile layer to map open network footprint assets." 
+                    {isRegister
+                      ? "Create an identity profile layer to map open network footprint assets."
                       : "Pass systemic authentication layers to map real-time exposure matrices inside Linksys."
                     }
                   </p>
                 </div>
 
-                <form onSubmit={onSubmit} className="space-y-4.5">
+                {/* ── GOOGLE SSO BUTTON ── */}
+                <motion.button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={googleLoading || loading}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3.5 text-xs font-mono font-bold uppercase tracking-widest text-slate-200 transition-all duration-300 hover:border-cyan-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_20px_rgba(0,194,255,0.1)] disabled:opacity-50"
+                >
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  {googleLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  <span>{googleLoading ? "Routing OAuth Vector..." : "Continue with Google"}</span>
+                </motion.button>
+
+                {/* ── DIVIDER ── */}
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-slate-600">or authenticate manually</span>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                </div>
+
+                {/* ── MANUAL FORM ── */}
+                <form onSubmit={onSubmit} className="space-y-4">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={isRegister ? "register-fields" : "login-fields"}
@@ -424,9 +469,8 @@ export default function LoginPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: isRegister ? -15 : 15 }}
                       transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className="space-y-4.5"
+                      className="space-y-4"
                     >
-                      {/* Name Parameter (Only on Register) */}
                       {isRegister && (
                         <div className="space-y-2">
                           <label htmlFor="fullName" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
@@ -446,7 +490,6 @@ export default function LoginPage() {
                         </div>
                       )}
 
-                      {/* Identity Endpoint Field */}
                       <div className="space-y-2">
                         <label htmlFor="email" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
                           <Terminal className="h-3 w-3" /> Identity Endpoint Token
@@ -465,7 +508,6 @@ export default function LoginPage() {
                         </div>
                       </div>
 
-                      {/* System Passphrase Field */}
                       <div className="space-y-2">
                         <label htmlFor="password" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
                           <Lock className="h-3 w-3" /> System Passphrase Key
@@ -492,7 +534,6 @@ export default function LoginPage() {
                         </div>
                       </div>
 
-                      {/* Confirm Passphrase Field (Only on Register) */}
                       {isRegister && (
                         <div className="space-y-2">
                           <label htmlFor="confirmPassword" className="font-mono text-[10px] font-black uppercase tracking-widest text-cyan-400/90 flex items-center gap-1.5">
@@ -515,7 +556,6 @@ export default function LoginPage() {
                     </motion.div>
                   </AnimatePresence>
 
-                  {/* Options Matrix Row (Only on Login) */}
                   {!isRegister && (
                     <div className="flex items-center justify-between text-xs pt-0.5">
                       <label className="flex cursor-pointer items-center gap-2 text-slate-400 select-none hover:text-slate-200 transition-colors">
@@ -536,7 +576,6 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {/* Diagnostics Error Intercept */}
                   <AnimatePresence mode="wait">
                     {error && (
                       <motion.div
@@ -551,10 +590,9 @@ export default function LoginPage() {
                     )}
                   </AnimatePresence>
 
-                  {/* Submission Vector Processing Button */}
                   <motion.button
                     type="submit"
-                    disabled={loading || success}
+                    disabled={loading || success || googleLoading}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-4 py-4 text-xs font-black uppercase tracking-widest text-slate-950 shadow-[0_0_30px_rgba(0,194,255,0.4)] transition-all duration-300 hover:shadow-[0_0_40px_rgba(0,194,255,0.6)] disabled:opacity-50"
@@ -576,7 +614,6 @@ export default function LoginPage() {
                   </motion.button>
                 </form>
 
-                {/* Subtext Form Navigation Toggle */}
                 <div className="text-center pt-2">
                   <button
                     type="button"
