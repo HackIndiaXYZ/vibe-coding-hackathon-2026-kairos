@@ -14,6 +14,18 @@
 
 *Built at HackIndia Vibe Coding Hackathon 2026 by Team Kairos*
 
+## 🏆 Hackathon Track
+
+**🚀 Startup Prototype**  
+Build a product that can turn into a real startup.
+
+### ⚡ Built With
+
+**Frontend:** React, TypeScript, Tailwind CSS, ReactFlow, Three.js
+
+**Backend:** FastAPI, Python, SQLite, Google OAuth
+
+**AI Tools:** ChatGPT, Claude, Cursor, GitHub Copilot
 
 ---
 
