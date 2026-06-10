@@ -63,7 +63,7 @@ A complete inventory of all discovered accounts with metadata, status, and risk 
 
 ```
                          ┌─────────────────────────────┐
-                         │          LINKSYS             │
+                         │          LINKSYS            │
                          └─────────────────────────────┘
                                        │
               ┌────────────────────────┴────────────────────────┐
