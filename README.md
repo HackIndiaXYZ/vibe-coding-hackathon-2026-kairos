@@ -67,18 +67,18 @@ A complete inventory of all discovered accounts with metadata, status, and risk 
                          └─────────────────────────────┘
                                        │
               ┌────────────────────────┴────────────────────────┐
-              │                                                  │
-     ┌────────▼────────┐                              ┌─────────▼────────┐
-     │    FRONTEND      │                              │     BACKEND       │
-     │  React 19 + Vite │◄──────── REST API ──────────│  FastAPI + Python │
-     │   TypeScript     │          (Axios)             │   Uvicorn ASGI    │
-     └─────────┬────────┘                              └─────────┬─────────┘
+              │                                                 │
+     ┌────────▼─────────┐                             ┌─────────▼────────┐
+     │    FRONTEND      │                             │      BACKEND     │
+     │  React 19 + Vite │◄──────── REST API ──────────│ FastAPI + Python │
+     │   TypeScript     │          (Axios)            │   Uvicorn ASGI   │
+     └─────────┬────────┘                             └──────────┬───────┘
                │                                                 │
     ┌──────────┴──────────┐                       ┌─────────────┴─────────────┐
     │                     │                       │                           │
- ┌──▼──────────┐   ┌──────▼──────┐        ┌──────▼──────┐           ┌────────▼────────┐
- │  Graph View  │   │  Dashboard  │        │  API Routes  │           │   Data Layer    │
- │  (ReactFlow) │   │  (Recharts) │        │             │           │                 │
+ ┌──▼──────────┐   ┌──────▼──────┐        ┌───────▼──────┐           ┌────────▼────────┐
+ │ Graph View  │   │  Dashboard  │        │  API Routes  │           │   Data Layer    │
+ │ (ReactFlow) │   │  (Recharts) │        │              │           │                 │
  │             │   │             │        │ /accounts    │           │  SQLAlchemy ORM │
  │  3D Scene   │   │  Risks Page │        │ /graph       │           │  SQLite         │
  │  (Three.js  │   │  Identities │        │ /risks       │           │  footprint.db   │
@@ -90,9 +90,9 @@ A complete inventory of all discovered accounts with metadata, status, and risk 
                                           └──────┬───────┘
                                                  │
                                     ┌────────────▼────────────┐
-                                    │      Google OAuth 2.0    │
-                                    │  python-jose JWT tokens  │
-                                    │  passlib bcrypt hashing  │
+                                    │      Google OAuth 2.0   │
+                                    │  python-jose JWT tokens │
+                                    │  passlib bcrypt hashing │
                                     └─────────────────────────┘
 ```
 
