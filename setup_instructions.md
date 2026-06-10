@@ -97,13 +97,6 @@ Replace `your-actual-client-id-here` and `your-actual-secret-here` with the valu
 
 > For a stronger `SECRET_KEY` in production: `openssl rand -hex 32`
 
-**Initialise the database:**
-
-```bash
-python -m app.db.init_db
-```
-
-This creates `footprint.db` in the `backend/` directory.
 
 **Start the backend server:**
 
@@ -116,7 +109,7 @@ The server is ready when you see:
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 
-FastAPI auto-generates interactive API documentation — no extra setup needed:
+FastAPI auto-generates interactive API documentation, view them here:
 - **Swagger UI:** http://localhost:8000/docs
 - **ReDoc:** http://localhost:8000/redoc
 
@@ -226,7 +219,3 @@ lsof -ti:5173 | xargs kill -9
 
 ---
 
-
-⚡ Built at **HackIndia Vibe Coding Hackathon 2026** by Team Kairos
-
-</div>
